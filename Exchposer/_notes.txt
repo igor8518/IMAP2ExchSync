@@ -1,0 +1,179 @@
+﻿Exchange Web Services (EWS) Managed API: http://www.microsoft.com/en-us/download/details.aspx?id=35371
+
+parameter names: camelCase
+local variables: camelCase
+properties: MixedCase
+private member variables: camelCase
+methods: MixedCase
+class/type names: MixedCase
+
+        /*
+
+        // This constant string is used as a "salt" value for the PasswordDeriveBytes function calls.
+        // This size of the IV (in bytes) must = (keysize / 8).  Default keysize is 256, so the IV must be
+        // 32 bytes long.  Using a 16 character string here gives us 32 bytes when converted to a byte array.
+        private const string initVector = "tu89geji340t89u2";
+
+        // This constant is used to determine the keysize of the encryption algorithm.
+        private const int keysize = 256;
+
+        public static string Encrypt(string plainText, string passPhrase)
+        {
+            byte[] initVectorBytes = Encoding.UTF8.GetBytes(initVector);
+            byte[] plainTextBytes = Encoding.UTF8.GetBytes(plainText);
+            PasswordDeriveBytes password = new PasswordDeriveBytes(passPhrase, null);
+            byte[] keyBytes = password.GetBytes(keysize / 8);
+            RijndaelManaged symmetricKey = new RijndaelManaged();
+            symmetricKey.Mode = CipherMode.CBC;
+            ICryptoTransform encryptor = symmetricKey.CreateEncryptor(keyBytes, initVectorBytes);
+            MemoryStream memoryStream = new MemoryStream();
+            CryptoStream cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write);
+            cryptoStream.Write(plainTextBytes, 0, plainTextBytes.Length);
+            cryptoStream.FlushFinalBlock();
+            byte[] cipherTextBytes = memoryStream.ToArray();
+            memoryStream.Close();
+            cryptoStream.Close();
+            return Convert.ToBase64String(cipherTextBytes);
+        }
+
+        public static string Decrypt(string cipherText, string passPhrase)
+        {
+            byte[] initVectorBytes = Encoding.ASCII.GetBytes(initVector);
+            byte[] cipherTextBytes = Convert.FromBase64String(cipherText);
+            PasswordDeriveBytes password = new PasswordDeriveBytes(passPhrase, null);
+            byte[] keyBytes = password.GetBytes(keysize / 8);
+            RijndaelManaged symmetricKey = new RijndaelManaged();
+            symmetricKey.Mode = CipherMode.CBC;
+            ICryptoTransform decryptor = symmetricKey.CreateDecryptor(keyBytes, initVectorBytes);
+            MemoryStream memoryStream = new MemoryStream(cipherTextBytes);
+            CryptoStream cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read);
+            byte[] plainTextBytes = new byte[cipherTextBytes.Length];
+            int decryptedByteCount = cryptoStream.Read(plainTextBytes, 0, plainTextBytes.Length);
+            memoryStream.Close();
+            cryptoStream.Close();
+            return Encoding.UTF8.GetString(plainTextBytes, 0, decryptedByteCount);
+        }
+
+        static readonly string PasswordHash = "P@@Sw0rd";
+        static readonly string SaltKey = "S@LT&KEY";
+        static readonly string VIKey = "@1B2c3D4e5F6g7H8";
+
+        public static string Encrypt(string plainText)
+        {
+            byte[] plainTextBytes = Encoding.UTF8.GetBytes(plainText);
+
+            byte[] keyBytes = new Rfc2898DeriveBytes(PasswordHash, Encoding.ASCII.GetBytes(SaltKey)).GetBytes(256 / 8);
+            var symmetricKey = new RijndaelManaged() { Mode = CipherMode.CBC, Padding = PaddingMode.Zeros };
+            var encryptor = symmetricKey.CreateEncryptor(keyBytes, Encoding.ASCII.GetBytes(VIKey));
+
+            byte[] cipherTextBytes;
+
+            using (var memoryStream = new MemoryStream())
+            {
+                using (var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write))
+                {
+                    cryptoStream.Write(plainTextBytes, 0, plainTextBytes.Length);
+                    cryptoStream.FlushFinalBlock();
+                    cipherTextBytes = memoryStream.ToArray();
+                    cryptoStream.Close();
+                }
+                memoryStream.Close();
+            }
+            return Convert.ToBase64String(cipherTextBytes);
+        }
+
+        public static string Decrypt(string encryptedText)
+        {
+            byte[] cipherTextBytes = Convert.FromBase64String(encryptedText);
+            byte[] keyBytes = new Rfc2898DeriveBytes(PasswordHash, Encoding.ASCII.GetBytes(SaltKey)).GetBytes(256 / 8);
+            var symmetricKey = new RijndaelManaged() { Mode = CipherMode.CBC, Padding = PaddingMode.None };
+
+            var decryptor = symmetricKey.CreateDecryptor(keyBytes, Encoding.ASCII.GetBytes(VIKey));
+            var memoryStream = new MemoryStream(cipherTextBytes);
+            var cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read);
+            byte[] plainTextBytes = new byte[cipherTextBytes.Length];
+
+            int decryptedByteCount = cryptoStream.Read(plainTextBytes, 0, plainTextBytes.Length);
+            memoryStream.Close();
+            cryptoStream.Close();
+            return Encoding.UTF8.GetString(plainTextBytes, 0, decryptedByteCount).TrimEnd("\0".ToCharArray());
+        }
+        */
+
+
+        /*
+        static void SetPullNotifications(ExchangeService service) 
+        { 
+            PullSubscription subscription = service.SubscribeToPullNotifications(
+                new FolderId[] { WellKnownFolderName.Inbox }, 5, null, 
+                EventType.NewMail, EventType.Created, EventType.Deleted); 
+ 
+            for (; ; )
+            {
+                Thread.Sleep(1000);
+                Console.WriteLine("!");
+                GetEventsResults events = subscription.GetEvents();                
+
+                foreach (ItemEvent itemEvent in events.ItemEvents)
+                {
+                    switch (itemEvent.EventType)
+                    {
+                        case EventType.NewMail:
+                            EmailMessage message = EmailMessage.Bind(service, itemEvent.ItemId);
+                            Console.WriteLine("New mail");
+                            break;
+
+                        case EventType.Created:
+                            Item item = Item.Bind(service, itemEvent.ItemId);
+                            Console.WriteLine("Item created");
+                            break;
+
+                        case EventType.Deleted:
+                            Console.WriteLine("Item deleted: " + itemEvent.ItemId.UniqueId);
+                            break;
+                    }
+                }
+            }
+        } 
+        */
+
+        /*
+        static void ListFolders()
+        {
+            Folder rootfolder = Folder.Bind(service, WellKnownFolderName.MsgFolderRoot);
+            Console.WriteLine("The " + rootfolder.DisplayName + " has " + rootfolder.ChildFolderCount + " child folders.");
+
+            rootfolder.Load();
+            foreach (Folder folder in rootfolder.FindFolders(new FolderView(100)))
+            {
+                Console.WriteLine("\nName: " + folder.ToString() + "\n  Id: " + folder.Id);
+            }
+        }
+        */
+
+        /*
+        static void DelaySendEmail(ExchangeService service)
+        {
+            EmailMessage message = new EmailMessage(service);
+
+            message.ToRecipients.Add("demin-da@globse.com");
+            message.Subject = "Test subject";
+
+            ExtendedPropertyDefinition PR_DEFERRED_SEND_TIME = new ExtendedPropertyDefinition(16367, MapiPropertyType.SystemTime);
+
+            string sendTime = DateTime.Now.AddMinutes(1).ToUniversalTime().ToString();
+
+            //message.SetExtendedProperty(PR_DEFERRED_SEND_TIME, sendTime);
+
+            StringBuilder str = new StringBuilder();
+            str.AppendLine("Client submitted the message.SendAndSaveCopy request at: " + DateTime.Now.ToUniversalTime().ToString() + ";");
+            str.AppendLine(" email message will be sent at: " + sendTime + ".");
+            message.Body = str.ToString();
+
+            Console.WriteLine("");
+            Console.WriteLine("Client submitted the message.SendAndSaveCopy request at: " + DateTime.Now.ToUniversalTime().ToString() + ".");
+            Console.WriteLine("Email message will be sent at: " + sendTime + ".");
+
+            message.SendAndSaveCopy();
+        }
+        */

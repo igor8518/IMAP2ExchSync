@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <?define ProductName="Exchposer" ?>
+  <?define ProductDescription="Exchposer" ?>
+  <?define ProductVersion="0.1.0.0" ?>
+  <?define ProductCode="F1A102AD-9441-4098-9889-EFA6E5A14BC3"?>
+  <?define UpgradeCode="7E3EDA26-0177-45E4-9003-15857182A414"?>
+  <?define Manufacturer="ddummy"?>
+
+  <Product Id="$(var.ProductCode)" Name="$(var.ProductName)" Language="1033" Version="$(var.ProductVersion)" Manufacturer="$(var.Manufacturer)" UpgradeCode="$(var.UpgradeCode)">
+    <Package InstallerVersion="200" Compressed="yes" Description="$(var.ProductDescription)" Manufacturer="$(var.Manufacturer)" InstallScope="perMachine" />
+
+    <Media Id="1" Cabinet="exchposer.cab" EmbedCab="yes" />
+
+    <Feature Id="ProductFeature" Title="$(var.ProductDescription)" Level="1">
+      <ComponentRef Id="ProductComponent" />
+      <ComponentRef Id="EWS_dlls" />
+      <ComponentRef Id="ApplicationShortcut" />
+    </Feature>
+
+    <!-- <Property Id="OLDERFOUND" Secure="yes" /> -->
+    <!-- <Property Id="ALLUSERS" Value="1" /> -->
+    <Upgrade Id="$(var.UpgradeCode)">
+      <UpgradeVersion Property="OLDERFOUND" OnlyDetect="no" IncludeMaximum="no" Maximum="$(var.ProductVersion)" />
+      <UpgradeVersion Property="NEWERFOUND" OnlyDetect="yes" IncludeMinimum="no" Minimum="$(var.ProductVersion)" />
+    </Upgrade>
+    <InstallExecuteSequence>
+      <Custom Action="PreventDowngrading" After="FindRelatedProducts">NEWERFOUND</Custom>
+      <RemoveExistingProducts Before='InstallInitialize' />
+    </InstallExecuteSequence>
+    <CustomAction Id="PreventDowngrading" Error="Newer version already installed." />
+
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLLOCATION" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch $(var.ProductName)" />
+    <UI>
+      <UIRef Id="WixUI_InstallDir" />
+
+      <!-- Skip license dialog -->
+      <Publish Dialog="WelcomeDlg"
+        Control="Next"
+        Event="NewDialog"
+        Value="InstallDirDlg"
+        Order="2">1</Publish>
+      <Publish Dialog="InstallDirDlg"
+        Control="Back"
+        Event="NewDialog"
+        Value="WelcomeDlg"
+        Order="2">1</Publish>
+      <Publish Dialog="ExitDialog"
+        Control="Finish"
+        Event="DoAction"
+        Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
+    </UI>
+
+    <Property Id="WixShellExecTarget" Value="[#ApplicationExe]" />
+    <CustomAction Id="LaunchApplication"
+      BinaryKey="WixCA"
+      DllEntry="WixShellExec"
+      Impersonate="yes" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="INSTALLLOCATION" Name="$(var.ProductName)" />
+      </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="$(var.ProductName)" />
+      </Directory>
+    </Directory>
+
+    <DirectoryRef Id="INSTALLLOCATION">
+      <Component Id="ProductComponent" Guid="23EF3DB9-E26D-4CD5-9B8F-EE527A6F4700">
+        <File Id="ApplicationExe" Source="$(var.Exchposer.TargetPath)" />
+      </Component>
+      <Component Id="EWS_dlls" Guid="446F052A-0994-48A2-9AAC-6E9CCEBD76DC">
+        <File Source="$(var.Exchposer.TargetDir)\Microsoft.Exchange.WebServices.dll" />
+        <File Source="$(var.Exchposer.TargetDir)\Microsoft.Exchange.WebServices.Auth.dll" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="ApplicationShortcut" Guid="F2E6C715-89BE-409F-9B29-F2439BFF04D7">
+        <Shortcut Id="ApplicationStartMenuShortcut" Name="$(var.ProductName)" Description="$(var.ProductDescription)" Target="[INSTALLLOCATION]$(var.Exchposer.TargetFileName)" WorkingDirectory="INSTALLLOCATION" />
+        <Shortcut Id="UninstallProduct" Name="Uninstall" Description="Uninstalls the application" Target="[System64Folder]msiexec.exe" Arguments="/x [ProductCode]" />
+        <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
+        <RegistryValue Root="HKCU" Key="Software\$(var.Manufacturer)\$(var.ProductName)" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+      </Component>
+    </DirectoryRef>
+
+  </Product>
+</Wix>
