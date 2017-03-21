@@ -76,7 +76,7 @@ namespace IMAP2ExchSync
 
         public bool SyncInit(DateTime syncFromTime, DateTime syncToTime, int indexMails, bool offlineSync)
         {
-            Log(1, mailObject.ExchangeMailBox + " Новый поток");
+            Log(1, mailObject.ExchangeMailBox + " Начало синхронизации");
             CertificateCallback.AcceptInvalidCertificate = mailObject.ExchangeAcceptInvalidCertificate;
             exchangeServer = new ExchangeServer(mailObject.ExchangeUserName, mailObject.ExchangePassword,
                 mailObject.ExchangeDomain, mailObject.ExchangeUrl, exchangeReconnectTimeout, exchposer, mailObject.ExchangeMailBox);
@@ -131,19 +131,22 @@ namespace IMAP2ExchSync
             {
                 try
                 {
-
+                    //Достаем объект ящика из очереди
                     lock (((ICollection)queue).SyncRoot)
                     {
                         mailObject = queue.Dequeue();
                         Log(11, queue);
                     }
-                    //mailList = new MailList<MailData>(mailObject);
+
+                    //Загружаем список писем для скачивания из файла
                     mailList = MailList<MailData>.Load(mailObject);
 
-                    //mailList.Add(new MailData());
+                    //Инициализация указателей почтовых серверов
                     SyncStop();
+                    //Определение пути файла последнего UID
                     syncId = new FileString(Path.Combine(AppSettings.AppDefaultFolder, mailObject.ExchangeMailBox + "_syncid"));
                     Log(1, "Обработка начата");
+                    //Инициализация констант даты и времени
                     DateTime currentTime = DateTime.Now;
                     DateTime syncFromTime = DateTime.MinValue;
                     DateTime syncToTime = DateTime.MaxValue;
@@ -159,9 +162,12 @@ namespace IMAP2ExchSync
                      }*/
 
                     //if ((currentTime.Date - syncFromTime.Date).TotalDays > appSettings.MaxDaysToSync)
+
+                    //Определение начальной даты синхронизации исходя из максимального количества дней синхронизации
                     if ((currentTime - syncFromTime).TotalDays > appSettings.MaxDaysToSync)
                         syncFromTime = currentTime.AddDays(-appSettings.MaxDaysToSync + 1).Date;
 
+                    //Запуск синхронизации ящиков
                     if (!SyncInit(syncFromTime, syncToTime, 0, false))
                     {
                         Log(1, "Обработка завершена syncFromTime не доступен: " + mailObject.ExchangeMailBox);
