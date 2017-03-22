@@ -77,10 +77,10 @@ namespace IMAP2ExchSync
         public bool SyncInit(DateTime syncFromTime, DateTime syncToTime, int indexMails, bool offlineSync)
         {
             Log(1, mailObject.ExchangeMailBox + " Начало синхронизации");
+            //Подключение к серверу Exchange
             CertificateCallback.AcceptInvalidCertificate = mailObject.ExchangeAcceptInvalidCertificate;
             exchangeServer = new ExchangeServer(mailObject.ExchangeUserName, mailObject.ExchangePassword,
                 mailObject.ExchangeDomain, mailObject.ExchangeUrl, exchangeReconnectTimeout, exchposer, mailObject.ExchangeMailBox);
-
             try
             {
                 exchangeServer.Open();
@@ -90,7 +90,8 @@ namespace IMAP2ExchSync
                 MessageBox.Show(String.Format("Ошибка подключения к серверу Exchange:" + " {0}", ex.Message));
                 return false;
             }
-
+            /////////////////////
+            //Подключение к внешнему серверу
             switch (mailObject.MailServerType)
             {
                 case MailServerTypes.IMAP:
@@ -103,7 +104,9 @@ namespace IMAP2ExchSync
                 default:
                     throw new InvalidOperationException("Не поддерживаемый тип внешнего сервера");
             }
-
+            ///////////////////////////////
+            //Если включена синхронизация на ящике и даты синхронизации соответствубт хронологии,
+            //выполняем полную синхронизацию в пределах указанных дат
             if ((syncToTime > syncFromTime) && (mailObject.SyncEnabled))
             {
 
