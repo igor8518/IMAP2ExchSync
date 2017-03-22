@@ -72,7 +72,7 @@ namespace IMAP2ExchSync
                 PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
             }
         }
-
+        public int sort = 0;
         public const string SettingsPassword = "ExCh2811";
         public string ExchangeUrl = "";
         public string ExchangeDomain = "";

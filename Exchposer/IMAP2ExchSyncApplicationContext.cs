@@ -44,7 +44,7 @@ namespace IMAP2ExchSync
 
         public static NotifyIcon notifyIcon = null;
         public static ContextMenuStrip notifyIconMenu = null;
-        OptionsForm optionsForm = null;
+        public static OptionsForm optionsForm = null;
         LogViewForm logViewForm = null;
         Queue<Mails> mainQueue = null;
 
@@ -289,11 +289,18 @@ namespace IMAP2ExchSync
                     }
                 }
                 appSettings.Save();
+               
             }
             catch (Exception ex)
             {
                 MessageBox.Show(String.Format("Ошибка записи/чтения настроек из файла" + " {0}: {1}", fileName, ex.Message));
                 return;
+            }
+            int MailsIndex = 0;
+            foreach (Mails mails in appSettings.listMails)
+            {
+                mails.sort = MailsIndex;
+                MailsIndex++;
             }
             mainQueue = new Queue<Mails>(appSettings.listMails);
 

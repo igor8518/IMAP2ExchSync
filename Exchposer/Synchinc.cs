@@ -1,11 +1,7 @@
-﻿using Microsoft.Exchange.WebServices.Data;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -80,7 +76,7 @@ namespace IMAP2ExchSync
             //Подключение к серверу Exchange
             CertificateCallback.AcceptInvalidCertificate = mailObject.ExchangeAcceptInvalidCertificate;
             exchangeServer = new ExchangeServer(mailObject.ExchangeUserName, mailObject.ExchangePassword,
-                mailObject.ExchangeDomain, mailObject.ExchangeUrl, exchangeReconnectTimeout, exchposer, mailObject.ExchangeMailBox);
+            mailObject.ExchangeDomain, mailObject.ExchangeUrl, exchangeReconnectTimeout, exchposer, mailObject.ExchangeMailBox);
             try
             {
                 exchangeServer.Open();
@@ -109,8 +105,10 @@ namespace IMAP2ExchSync
             //выполняем полную синхронизацию в пределах указанных дат
             if ((syncToTime > syncFromTime) && (mailObject.SyncEnabled))
             {
-
+                //Проводим полную синхронизацию             
                 FullSyncExchangeMessages(syncFromTime, syncToTime, offlineSync);
+
+                //После выключаем признак полной синхронизации на данный ящик
                 if (IMAP2ExchSyncApplicationContext.notifyIconMenu.InvokeRequired)
                 {
 
@@ -170,13 +168,14 @@ namespace IMAP2ExchSync
                     if ((currentTime - syncFromTime).TotalDays > appSettings.MaxDaysToSync)
                         syncFromTime = currentTime.AddDays(-appSettings.MaxDaysToSync + 1).Date;
 
-                    //Запуск синхронизации ящиков
+                    //Запуск полной синхронизации ящиков если необходимо
                     if (!SyncInit(syncFromTime, syncToTime, 0, false))
                     {
                         Log(1, "Обработка завершена syncFromTime не доступен: " + mailObject.ExchangeMailBox);
                         mailObject = null;
                         return;
                     }
+                    //Запрос новых писем
                     if (!SearchNew())
                     {
 
@@ -199,8 +198,27 @@ namespace IMAP2ExchSync
 
                     lock (((ICollection)queue).SyncRoot)
                     {
+
                         queue.Enqueue(mailObject);
                     }
+                    if (IMAP2ExchSyncApplicationContext.optionsForm != null)
+                    {
+                        if (IMAP2ExchSyncApplicationContext.optionsForm.InvokeRequired)
+                        {
+
+                            UpdateSettingCallback d = new UpdateSettingCallback(UpdateSetting);
+                            IMAP2ExchSyncApplicationContext.optionsForm.Invoke(d, new object[] { mailObject });
+                        }
+                        else
+                        {
+                            UpdateSetting(mailObject);
+                        }
+                    }
+                    else
+                    {
+                        UpdateSetting(mailObject);
+                    }
+                    
                     Log(1, "Обработка завершена");
                 }
                 catch (Exception ex)
@@ -213,22 +231,23 @@ namespace IMAP2ExchSync
                     mailObject = null;
                 }
             }
+
             Log(1, "Поток завершен");
+        }
+
+        delegate void UpdateSettingCallback(Mails mailObject);
+        void UpdateSetting(Mails mailObject)
+        {
+            appSettings.listMails[mailObject.sort] = mailObject;
+            appSettings.Save();
+
         }
 
         private bool SearchNew()
         {
             string LastUID;
-            try
-            {
-                LastUID = syncId.Load();
-            }
-            catch (Exception ex)
-            {
-                Log(1, ex.Message);
-                mailObject.SyncEnabled = true;
-                throw;
-            }
+            LastUID = syncId.Load();
+            
             if (LastUID != null)
             {
                 mailMessageIDs.Clear();
@@ -241,9 +260,9 @@ namespace IMAP2ExchSync
                 {
                     mailMessageIDs.Clear();
 
-                }
-                
+                }               
                 mailServer.Close();
+
                 int count = 0;
                 foreach (MailMessageIDs mailID in mailMessageIDs)
                 {
@@ -252,11 +271,8 @@ namespace IMAP2ExchSync
 
                     if (findIndex < 0)
                     {
-
-                        mailList.Add(new MailData(mailID.UIDMessage, mailID.MessageID, DateTime.Now, "TEST"));
-
-                        count++;
-                        
+                        mailList.Add(new MailData(mailID.UIDMessage, mailID.MessageID, mailID.dateTime, mailID.Subject));
+                        count++;                        
                     }
 
                 }
@@ -291,14 +307,14 @@ namespace IMAP2ExchSync
             }
             
         }
-
+        delegate void SetSyncCallback(Mails mailObject, bool Sync);
         void SetSync(Mails mailObject, bool Sync)
         {
             mailObject.SyncEnabled = Sync;
 
         }
 
-        delegate void SetSyncCallback(Mails mailObject, bool Sync);
+        
         void SetNotifyIcon(System.Drawing.Icon state, bool showTip = false)
         {
             
@@ -343,9 +359,8 @@ namespace IMAP2ExchSync
         {
             try
             {
-                //var findResults = exchangeServer.GetMessages(Convert.ToDateTime(SyncId).AddSeconds(1), DateTime.MaxValue);
 
-                //mailServer.Open();
+                //Получаем список Message-ID из Exchange за указанный период для сравнения с внешним сервером
                 exchMessageIDs.Clear();
                 exchangeServer.ProcessMessages(fromTime, toTime, (msg) =>
                 {
@@ -356,6 +371,9 @@ namespace IMAP2ExchSync
                         //Application.DoEvents();
                     }
                 });
+                exchangeServer.Close();
+                //////////////////////////////////////
+                //Получаем список Message-ID,Subject,Date и пр. с внешнего сервера за указанный период для сравнения с Exchange
                 mailMessageIDs.Clear();
                 mailServer.Open();
                 if (!mailServer.GetMessageIDs(fromTime, toTime, mailObject.MailFolderName, (MessageID) =>
@@ -367,9 +385,14 @@ namespace IMAP2ExchSync
                     mailMessageIDs.Clear();
 
                 }
-                syncId.Save(mailMessageIDs[mailMessageIDs.Count-1].UIDMessage);
                 mailServer.Close();
+                //////////////////////////////////////////////
+                
+                //Очистка списка сообщений на загрузку
+                mailList.Clear();
+                //Количество добавляемых элементов
                 int count = 0;
+                //Сверка 
                 foreach (MailMessageIDs mailID in mailMessageIDs)
                 {
                     MessageIDSearch ss = new MessageIDSearch(mailID.MessageID);
@@ -385,6 +408,8 @@ namespace IMAP2ExchSync
                 }
                 Log(1, "Писем для скачивания: " + mailList.Count);
                 //Thread.Sleep(5000);
+                mailList.Save();
+                syncId.Save(mailMessageIDs[mailMessageIDs.Count - 1].UIDMessage);
             }
             catch (Exception ex)
             {
