@@ -119,24 +119,36 @@ namespace IMAP2ExchSync
                     string logText = logWriter.Log(level, message.ToString());
                     if (logText != "")
                     {
-                        table.Rows.Add(logText + Environment.NewLine);
+                        if (level != 55)
+                        {
+                            table.Rows.Add(logText + Environment.NewLine);
+                        }
                         if (m != null)
                             m.LastStatus = origMessage.ToString();
                     }
                     else
                     {
-                        table.Rows.Add(message);
+                        if (level != 55)
+                        {
+                            table.Rows.Add(message);
+                        }
                         if (m != null)
                             m.LastStatus = origMessage.ToString();
                     }
 
                     if ((logViewForm != null) && (logText != ""))
                     {
-                        logViewForm.AppendLog(logText + Environment.NewLine);
+                        if (level != 55)
+                        {
+                            logViewForm.AppendLog(logText + Environment.NewLine);
+                        }
                     }
                     if ((optionsForm != null) && (logText != ""))
                     {
-                        optionsForm.AppendLog(logText + Environment.NewLine);
+                        if (level != 55)
+                        {
+                            optionsForm.AppendLog(logText + Environment.NewLine);
+                        }
                         
 
                     }
@@ -164,21 +176,33 @@ namespace IMAP2ExchSync
                         string logText = logWriter.Log(level, message1.ToString());
                         if (logText != "")
                         {
-                            table.Rows.Add(logText + Environment.NewLine);
+                            if (level != 55)
+                            {
+                                table.Rows.Add(logText + Environment.NewLine);
+                            }
                             //mail.LastStatus = message.ToString();
                         }
                         else
                         {
-                            table.Rows.Add(message1);
+                            if (level != 55)
+                            {
+                                table.Rows.Add(message1);
+                            }
                             //mail.LastStatus = message.ToString();
                         }
                         if ((logViewForm != null) && (logText != ""))
                         {
-                            logViewForm.AppendLog(logText + Environment.NewLine);
+                            if (level != 55)
+                            {
+                                logViewForm.AppendLog(logText + Environment.NewLine);
+                            }
                         }
                         if ((optionsForm != null) && (logText != ""))
                         {
-                            optionsForm.AppendLog(logText + Environment.NewLine);
+                            if (level != 55)
+                            {
+                                optionsForm.AppendLog(logText + Environment.NewLine);
+                            }
                             
 
                         }
@@ -224,8 +248,8 @@ namespace IMAP2ExchSync
 
                 threads.Clear();
                 threads.Add(new Synchinc(mainQueue, this, appSettings, "Поток 1", syncEvents));
-                //threads.Add(new Synchinc(mainQueue, this, appSettings, "Поток 2", syncEvents));
-                //threads.Add(new Synchinc(mainQueue, this, appSettings, "Поток 3", syncEvents));
+                threads.Add(new Synchinc(mainQueue, this, appSettings, "Поток 2", syncEvents));
+                threads.Add(new Synchinc(mainQueue, this, appSettings, "Поток 3", syncEvents));
 
             }
             return true;

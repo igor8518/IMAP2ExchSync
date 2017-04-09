@@ -28,16 +28,23 @@ namespace IMAP2ExchSync
 
         public void AppendLog(string msg)
         {
-            //txtLogView.Text = System.IO.File.ReadAllText(logFileName);
-            //txtLogView.Text = logReader.ReadToEnd();
-            if (txtLogView.InvokeRequired)
+            try
             {
-                SetTextCallback d = new SetTextCallback(AppendLog);
-                this.Invoke(d, new object[] { msg });
+                if (txtLogView.InvokeRequired)
+                {
+                    SetTextCallback d = new SetTextCallback(AppendLog);
+
+                    this.Invoke(d, new object[] { msg });
+
+                }
+                else
+                {
+                    txtLogView.AppendText(msg);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                txtLogView.AppendText(msg);
+                
             }
         }
     }

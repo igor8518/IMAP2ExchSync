@@ -175,19 +175,24 @@ namespace IMAP2ExchSync
 
     public class MailData
     {
-        public string UID;
-        public string messageID;
-        public DateTime dateTime;
-        public string subtitle;
+        public string UID = "";
+        public string Size = "0";
+        public string messageID = "<>";
+        public DateTime dateTime = DateTime.MinValue;
+        public DateTime dateTimeDown = DateTime.MinValue;
+        public DateTime dateTimeSend = DateTime.MinValue;
+        public int status = 0;
+        public string subtitle = "";
         public MailData()
         {
             UID = "";
-            messageID = "";
+            messageID = "<>";
             dateTime = DateTime.Now;
             subtitle = "";
         }
-        public MailData(string UID, string messageID, DateTime dateTime,string subtitle)
+        public MailData(string UID, string messageID, DateTime dateTime,string subtitle, string Size = "0")
         {
+            this.Size = Size;
             this.UID = UID;
             this.messageID = messageID;
             this.dateTime = dateTime;
@@ -230,6 +235,11 @@ namespace IMAP2ExchSync
         public  static MailList<MailData> Load(Mails mailData)
         {
             string fileName = Path.Combine(AppSettings.AppDefaultFolder, mailData.ExchangeMailBox + ".id");
+            return Load(fileName);
+        }
+        public static MailList<MailData> Load2(Mails mailData)
+        {
+            string fileName = Path.Combine(AppSettings.AppDefaultFolder, mailData.ExchangeMailBox + ".md");
             return Load(fileName);
         }
         public new void Save()

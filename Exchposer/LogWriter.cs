@@ -89,7 +89,7 @@ namespace IMAP2ExchSync
                 string logText = "";
                 if (level <= this.level)
                 {
-                    logText = DateTime.Now.ToString("u").Substring(0, 19) + " " + message;
+                    logText = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff").Substring(0, 23) + " " + message;
                     fileWriter.WriteLine(logText);
                 }
 

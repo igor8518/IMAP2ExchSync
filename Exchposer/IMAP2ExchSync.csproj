@@ -78,6 +78,7 @@
   <ItemGroup>
     <Compile Include="AppSettings.cs" />
     <Compile Include="CertificateCallback.cs" />
+    <Compile Include="StreamWithLog.cs" />
     <Compile Include="ProducerTest.cs" />
     <Compile Include="SyncEvents.cs" />
     <Compile Include="ExchangeServer.cs" />
