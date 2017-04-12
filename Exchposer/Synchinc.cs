@@ -262,6 +262,7 @@ namespace IMAP2ExchSync
                             }
                             Log(1, "Скачивание: " + mailList[i].UID + " " + GetKBMBGB(mailList[i].Size));
                             DateTime TimerD = DateTime.Now;
+                            SetNotifyIcon(Properties.Resources.AppIconBusy, 10, "Начало скачивания: " + mailList[i].subtitle + " " + GetKBMBGB(mailList[i].Size),true);
                             if (mailServer.DownloadMessage(mailList[i].UID, mailObject.MailFolderName, startOctet, (line) =>
                             {
                                 mailMessage.Add(line);
@@ -269,6 +270,7 @@ namespace IMAP2ExchSync
                                 downloaded += line.Length + 2;
                                 if (TimerD.AddMilliseconds(200) < DateTime.Now)
                                 {
+                                    SetNotifyIcon(Properties.Resources.AppIconBusy);
                                     if (startOctet == 0)
                                     {
                                         Log(55, "Скачивание: " + mailList[i].UID + " " + GetKBMBGB(downloaded.ToString()) + "/" + GetKBMBGB(mailList[i].Size));
@@ -287,6 +289,7 @@ namespace IMAP2ExchSync
                                 mailList[i].status = 1;
                                 mailList.Save();
                                 downloaded = 0;
+                                SetNotifyIcon(Properties.Resources.AppIconNormal, 10, "Конец скачивания: " + mailList[i].subtitle + " " + GetKBMBGB(mailList[i].Size), true);
                             }
                             else
                             {
@@ -299,6 +302,7 @@ namespace IMAP2ExchSync
                                 mailList.Save();
                                 downloaded = 0;
                                 startOctet = 0;
+                                SetNotifyIcon(Properties.Resources.AppIconNormal, 10, "Ошибка скачивания: " + mailList[i].subtitle + " " + GetKBMBGB(mailList[i].Size), true);
                                 /*try
                                 {
 
@@ -333,16 +337,23 @@ namespace IMAP2ExchSync
                                     "\tby mailserv.maxim-td.ru with " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Name + " id " + System.Reflection.Assembly.GetExecutingAssembly().ImageRuntimeVersion + ";\n" +
                                     "\t" + mailList[i].dateTimeDown.ToUniversalTime().ToString("R");
                                     Log(1, "Отправка: " + mailList[i].UID + " " + GetKBMBGB((int.Parse(mailList[i].Size) + AddHeader.Length).ToString()));
+                                    SetNotifyIcon(Properties.Resources.AppIconBusy, 10, "Начало отправки: " + mailList[i].subtitle + " " + GetKBMBGB((int.Parse(mailList[i].Size) + AddHeader.Length).ToString()), true);
                                     if (MailSend("mailserv.maxim-td.ru", 465, mailObject.ExchangeDomain + "\\" + mailObject.ExchangeUserName, mailObject.ExchangePassword, "sysadmin3@uk-kvazar.ru", mailObject.ExchangeMailBox, fileMessageName, AddHeader, mailList[i].UID, (int.Parse(mailList[i].Size) + AddHeader.Length).ToString()))
                                     {
+                                        SetNotifyIcon(Properties.Resources.AppIconNormal, 10, "Конец отправки: " + mailList[i].subtitle + " " + GetKBMBGB((int.Parse(mailList[i].Size) + AddHeader.Length).ToString()), true);
                                         mailList[i].dateTimeSend = DateTime.Now;
                                         mailList[i].status = 2;
                                         mailList.Save();
                                         //File.Delete(fileMessageName);
                                     }
+                                    else
+                                    {
+                                        SetNotifyIcon(Properties.Resources.AppIconNormal, 10, "Не удалось отправить: " + mailList[i].subtitle + " " + GetKBMBGB((int.Parse(mailList[i].Size) + AddHeader.Length).ToString()), true);
+                                    }
                                 }
                                 else
                                 {
+                                    
                                     mailList[i].status = 0;
                                     mailList.Save();
                                 }
@@ -527,8 +538,8 @@ namespace IMAP2ExchSync
 
         }
 
-        
-        void SetNotifyIcon(System.Drawing.Icon state, bool showTip = false)
+
+        void SetNotifyIcon(System.Drawing.Icon state, int showTime = 0, string Text= "", bool showTip = false)
         {
             
             if ((IMAP2ExchSyncApplicationContext.notifyIcon == null) || (exchangeServer == null) || (mailServer == null))
@@ -537,11 +548,11 @@ namespace IMAP2ExchSync
             IMAP2ExchSyncApplicationContext.notifyIcon.Icon = state;
             if (showTip)
             {
-                IMAP2ExchSyncApplicationContext.notifyIcon.BalloonTipText = "Обработка: " + mailObject.ExchangeMailBox;
+                IMAP2ExchSyncApplicationContext.notifyIcon.BalloonTipText = Text;
                 // устанавливаем зголовк
                 IMAP2ExchSyncApplicationContext.notifyIcon.BalloonTipTitle = "Информация";
                 // отображаем подсказку 5 секунд
-                IMAP2ExchSyncApplicationContext.notifyIcon.ShowBalloonTip(5);
+                IMAP2ExchSyncApplicationContext.notifyIcon.ShowBalloonTip(showTime);
             }
         }
 
@@ -614,7 +625,7 @@ namespace IMAP2ExchSync
                     if (findIndex<0)
                     {
 
-                        mailList.Add(new MailData(mailID.UIDMessage, mailID.MessageID, mailID.dateTime, mailID.Subject));
+                        mailList.Add(new MailData(mailID.UIDMessage, mailID.MessageID, mailID.dateTime, mailID.Subject, mailID.Size));
                         count++;
                     }
                     

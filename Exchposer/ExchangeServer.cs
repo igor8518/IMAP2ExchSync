@@ -110,27 +110,60 @@ namespace IMAP2ExchSync
                 return;
             }
             DateTime fromTimeRound = fromTime.Date;
-            
-            Folder inbox = Folder.Bind(service, WellKnownFolderName.Inbox);
 
-            SearchFilter sf = new SearchFilter.SearchFilterCollection(LogicalOperator.And,
-                new SearchFilter.IsGreaterThanOrEqualTo(EmailMessageSchema.DateTimeReceived, fromTimeRound),
-                new SearchFilter.IsLessThanOrEqualTo(EmailMessageSchema.DateTimeReceived, toTime));
+            //////////////////////
+            ExtendedPropertyDefinition allFoldersType = new ExtendedPropertyDefinition(13825, MapiPropertyType.Integer);
 
-            for (int findOffset = 0; ; findOffset += findPageSize)
+            FolderId rootFolderId = new FolderId(WellKnownFolderName.Root);
+            FolderView folderView = new FolderView(1000);
+            folderView.Traversal = FolderTraversal.Shallow;
+
+            //SearchFilter searchFilter1 = new SearchFilter.IsEqualTo(allFoldersType, "2");
+            //SearchFilter searchFilter1 = new SearchFilter.IsEqualTo(FolderSchema.DisplayName, "Deletions");
+            SearchFilter searchFilter2 = new SearchFilter.IsEqualTo(FolderSchema.DisplayName, "Allitems");
+            SearchFilter searchFilter1 = new SearchFilter.IsEqualTo(allFoldersType, "2");
+            SearchFilter.SearchFilterCollection searchFilterCollection = new SearchFilter.SearchFilterCollection(LogicalOperator.And);
+            searchFilterCollection.Add(searchFilter1);
+            searchFilterCollection.Add(searchFilter2);
+
+            FindFoldersResults findFoldersResults = service.FindFolders(rootFolderId, searchFilterCollection, folderView);
+
+            if (findFoldersResults.Folders.Count > 0)
             {
-                ItemView view = new ItemView(findPageSize, findOffset, OffsetBasePoint.Beginning); ;
-                view.PropertySet = new PropertySet(BasePropertySet.IdOnly, ItemSchema.Subject, ItemSchema.DateTimeReceived, EmailMessageSchema.InternetMessageId);
-                view.OrderBy.Add(EmailMessageSchema.DateTimeReceived, SortDirection.Descending);
+                Folder allItemsFolder = findFoldersResults.Folders[0];
+                Console.WriteLine("Folder:\t" + allItemsFolder.DisplayName);
 
-                FindItemsResults<Item> findResults = service.FindItems(WellKnownFolderName.Inbox, sf, view);
+                ItemView iv = new ItemView(1000);
+                //////////////////////////
+                //Folder Root = Folder.Bind(service, WellKnownFolderName.Root);
 
-                foreach (EmailMessage msg in findResults) 
-                    messageAction(msg);
+                SearchFilter sf = new SearchFilter.SearchFilterCollection(LogicalOperator.And,
+                    new SearchFilter.IsGreaterThanOrEqualTo(EmailMessageSchema.DateTimeReceived, fromTimeRound),
+                    new SearchFilter.IsLessThanOrEqualTo(EmailMessageSchema.DateTimeReceived, toTime));
+
+                for (int findOffset = 0; ; findOffset += findPageSize)
+                {
+                    ItemView view = new ItemView(findPageSize, findOffset, OffsetBasePoint.Beginning); ;
+                    view.PropertySet = new PropertySet(BasePropertySet.IdOnly, ItemSchema.Subject, ItemSchema.DateTimeReceived, EmailMessageSchema.InternetMessageId);
+                    view.OrderBy.Add(EmailMessageSchema.DateTimeReceived, SortDirection.Descending);
+
+                    //FindItemsResults<Item> findResults = service.FindItems(WellKnownFolderName.Root, sf, view);
+                    FindItemsResults<Item> findResults = allItemsFolder.FindItems(sf, view);
+
+                    foreach (Item msg in findResults)
+                    {
+                        if ((msg.GetType() == typeof(EmailMessage)))
+                        {
+                            messageAction(msg as EmailMessage);
+                        }
+                    }
 
                     if (!findResults.MoreAvailable)
                         break;
+                }
+                /////////////
             }
+            //////////////////
         }
 
 

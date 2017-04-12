@@ -20,6 +20,7 @@ namespace IMAP2ExchSync
         public BindingSource mailBindingSource { get; set; }
         private const int maxLogFileSize = 1024 * 50;
         private const int maxLogFileCount = 3;
+        private const int maxthreads = 6;
 
         private const int exchangeReconnectTimeout = 10;
         public int ExchangeReconnectTimeout
@@ -247,9 +248,12 @@ namespace IMAP2ExchSync
             {
 
                 threads.Clear();
-                threads.Add(new Synchinc(mainQueue, this, appSettings, "Поток 1", syncEvents));
-                threads.Add(new Synchinc(mainQueue, this, appSettings, "Поток 2", syncEvents));
-                threads.Add(new Synchinc(mainQueue, this, appSettings, "Поток 3", syncEvents));
+                
+                for (int i = 0; i < maxthreads; i++)
+                {
+                    threads.Add(new Synchinc(mainQueue, this, appSettings, "Поток "+i.ToString(), syncEvents));
+                }
+                
 
             }
             return true;

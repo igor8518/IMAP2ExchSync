@@ -700,7 +700,8 @@ namespace IMAP2ExchSync
                         throw new InvalidOperationException("IMAP server respond to SEARCH request: " + searchResult);
                     }
                     //uid fetch x:y body[header.fields (message-id)]
-                    sendMess = "FCH UID FETCH " + startUID + ":" + endUID + " BODY[HEADER.FIELDS (message-id subject date)]";
+
+                    sendMess = "FCH UID FETCH " + startUID + ":" + endUID + " (RFC822.SIZE BODY[HEADER.FIELDS (message-id subject date)])";
                     writer.WriteLine(sendMess);
                     //Log(21, sendMess);
                     string fetchResult = reader.ReadLine();
@@ -714,6 +715,7 @@ namespace IMAP2ExchSync
                         {
                             MailMessageIDs mailID = new MailMessageIDs();
                             mailID.UIDMessage = fetchhArray[4];
+                            mailID.Size = fetchhArray[6];
                             mailID.Subject = "";
                             while (fetchResult != ")")
                             {
