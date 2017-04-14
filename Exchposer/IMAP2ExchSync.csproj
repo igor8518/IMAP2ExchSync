@@ -168,7 +168,7 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties BuildVersion_UseUniversalClock="True" BuildVersion_ConfigurationName="Release" BuildVersion_AssemblyInfoFilename="Properties\AssemblyInfo.cs" BuildVersion_StartDate="2000/1/1" BuildVersion_UpdateFileVersion="True" BuildVersion_UpdateAssemblyVersion="True" />
+      <UserProperties BuildVersion_UseGlobalSettings="True" BuildVersion_UpdateAssemblyVersion="True" BuildVersion_UpdateFileVersion="True" BuildVersion_StartDate="2000/1/1" BuildVersion_AssemblyInfoFilename="Properties\AssemblyInfo.cs" BuildVersion_ConfigurationName="Release" BuildVersion_UseUniversalClock="True" />
     </VisualStudio>
   </ProjectExtensions>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

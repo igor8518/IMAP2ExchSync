@@ -136,7 +136,7 @@ namespace IMAP2ExchSync
         protected NetworkStream stream = null;
         protected StreamReaderWithLog reader = null;
         protected StreamWriterWithLog writer = null;
-        protected BinaryReader readerB = null;
+        protected BinaryReaderS readerB = null;
         protected BinaryWriter writerB = null;
 
         private readonly Action<int, string> logger;
@@ -186,7 +186,7 @@ namespace IMAP2ExchSync
         {
             return false;
         }
-        virtual public bool DownloadMessage(string UID, string mailBox, long StartOctet, Action<string> messageAction)
+        virtual public bool DownloadMessage(string UID, string mailBox, long StartOctet, Action<byte[]> messageAction)
         {
             return false;
         }
@@ -429,13 +429,17 @@ namespace IMAP2ExchSync
                 Log(1, "End SSL Auth");
 
                 reader = new StreamReaderWithLog(sslStream, Log);
+                //reader.
                 writer = new StreamWriterWithLog(sslStream, Log) { AutoFlush = true };
 
-                readerB = new BinaryReader(sslStream);
+                readerB = new BinaryReaderS(sslStream);
                 writerB = new BinaryWriter(sslStream);
 
                 reader.BaseStream.ReadTimeout = readTimeout;
                 writer.BaseStream.ReadTimeout = writeTimeout;
+
+                readerB.BaseStream.ReadTimeout = readTimeout;
+                writerB.BaseStream.ReadTimeout = writeTimeout;
 
                 string serverResponse;
 
@@ -817,7 +821,7 @@ namespace IMAP2ExchSync
 
         }
 
-        override public bool DownloadMessage(string UID, string mailBox, long StartOctet, Action<string> messageAction)
+        override public bool DownloadMessage(string UID, string mailBox, long StartOctet, Action<byte[]> messageAction)
         {
             try
             {
@@ -836,31 +840,105 @@ namespace IMAP2ExchSync
                 //sendMess = "FCH UID FETCH " + UID + " RFC822 <5";
                 sendMess = "FCH UID FETCH " + UID + " BODY[]<"+StartOctet.ToString()+ ".2097152>"; //Лимит 2 МБ
                 writer.WriteLine(sendMess);
-                string fetchResult = reader.ReadLine();
-                //Log(21, fetchResult);
-                string[] fetchhArray = fetchResult.Split(' ');
-                //byte[] fetchByte;
-                if (fetchhArray[0] == "*")
+                string fetchResult;
+                //fetchResult = reader.ReadLine();
+                //fetchResult = readerB.ReadString();
+
+                fetchResult = readerB.ReadLn();
+                byte byteAdd;
+                bool CRLF = true;
+                if (fetchResult[0] == '0')
                 {
-                    do
+                    byteAdd = (byte)fetchResult[fetchResult.Length];
+                    CRLF = false;
+                }
+                else
+                {
+                    byteAdd = 0;
+                    CRLF = true;
+                }
+                fetchResult = fetchResult.Substring(1, fetchResult.Length-1);
+                string Rex = (@"\{[0-9]+\}");
+                MatchCollection match = Regex.Matches(fetchResult, Rex);
+                if (match.Count > 0)
+                {
+                    long Size = long.Parse(match[0].Value.Substring(1, match[0].Value.Length-2));
+                    //Log(21, fetchResult);
+                    string[] fetchhArray = fetchResult.Split(' ');
+                    //byte[] fetchByte;
+                    
+                        if (fetchhArray[0] == "*")
                     {
-                        fetchResult = reader.ReadLine();
-                        if (fetchResult == ")")
+
+
+                        
+                        long downloaded = 0;
+                        do
                         {
-                            string fetchResultP = fetchResult;
-                            fetchResult = reader.ReadLine();
-                            if ((!fetchResult.StartsWith("FCH OK"))&&(!fetchResult.StartsWith("FCH BAD") && (!fetchResult.StartsWith("FCH NO"))))
+
+                            byte[] fetchBytes;
+                           /* if (!CRLF)
                             {
-                                messageAction(fetchResultP);
+                                fetchBytes = fetchBytes +  byteAdd;
+                            }*/
+                            if (Size > (downloaded + 1024))
+                            {
+                                
+                                fetchBytes = readerB.ReadBytes(1024);
+                                //fetchResult = fetchBytes.ToString();
+                                downloaded += fetchBytes.Length;
+
+                                messageAction(fetchBytes);
                             }
                             else
                             {
+                                fetchBytes = readerB.ReadBytes((int)(Size - downloaded));
+                                downloaded += fetchBytes.Length;
+
+                                messageAction(fetchBytes);
                                 break;
                             }
+                            
+                                
                         }
-                        messageAction(fetchResult);
+                        while (true);// (!fetchResult.StartsWith(")"));
+                        do
+                        {
+                            fetchResult = reader.ReadLine();
+                        }
+                        while (!fetchResult.StartsWith("FCH"));
                     }
-                    while (true);// (!fetchResult.StartsWith(")"));
+                }
+                else
+                {
+                    /*  //Log(21, fetchResult);
+                      string[] fetchhArray = fetchResult.Split(' ');
+                      //byte[] fetchByte;
+                      if (fetchhArray[0] == "*")
+                      {
+                          do
+                          {
+                              fetchResult = reader.ReadLine();
+                              if (fetchResult == ")")
+                              {
+                                  string fetchResultP = fetchResult;
+                                  fetchResult = reader.ReadLine();
+                                  if ((!fetchResult.StartsWith("FCH OK")) && (!fetchResult.StartsWith("FCH BAD") && (!fetchResult.StartsWith("FCH NO"))))
+                                  {
+                                      messageAction(fetchResultP);
+                                  }
+                                  else
+                                  {
+                                      break;
+                                  }
+                              }
+                              messageAction(fetchResult);
+                          }
+                          while (true);// (!fetchResult.StartsWith(")"));
+
+                      }*/
+                    
+                    return false;
 
                 }
                 //fetchResult = reader.ReadLine();
@@ -993,6 +1071,7 @@ namespace IMAP2ExchSync
                 clearTextReader.BaseStream.ReadTimeout = readTimeout;
                 clearTextWriter.BaseStream.WriteTimeout = writeTimeout;
 
+                
                 string serverResponse;
 
                 serverResponse = clearTextReader.ReadLine();
@@ -1015,8 +1094,15 @@ namespace IMAP2ExchSync
                 reader = new StreamReaderWithLog(sslStream);
                 writer = new StreamWriterWithLog(sslStream) { AutoFlush = true };
 
+                readerB = new BinaryReaderS(sslStream);
+                writerB = new BinaryWriter(sslStream);
+
                 reader.BaseStream.ReadTimeout = readTimeout;
                 writer.BaseStream.ReadTimeout = writeTimeout;
+
+                readerB.BaseStream.ReadTimeout = readTimeout;
+                writerB.BaseStream.ReadTimeout = writeTimeout;
+
 
                 writer.WriteLine("EHLO " + server);
                 serverResponse = reader.ReadLine();
@@ -1097,6 +1183,14 @@ namespace IMAP2ExchSync
                     reader.Dispose();
                 reader = null;
 
+                if (writerB != null)
+                    writerB.Dispose();
+                writerB = null;
+
+                if (readerB != null)
+                    readerB.Dispose();
+                readerB = null;
+
                 if (sslStream != null)
                     sslStream.Dispose();
                 sslStream = null;
@@ -1121,10 +1215,10 @@ namespace IMAP2ExchSync
         public void Send(string fromAddress, string toAddress, string fileMessageName, string addHeader, string UID, string Size)
         {
             string serverResponse;
-            StreamReader fileMessageRead = null;
+            FileStream fileMessageRead = null;
             try
             {
-                fileMessageRead = new StreamReader(new FileStream(fileMessageName, FileMode.Open, FileAccess.Read, FileShare.Read));
+                fileMessageRead = new FileStream(fileMessageName, FileMode.Open, FileAccess.Read, FileShare.Read);
                 writer.WriteLine("MAIL FROM: <" + fromAddress + ">");
                 serverResponse = reader.ReadLine();
                 if (!serverResponse.StartsWith("250"))
@@ -1141,30 +1235,43 @@ namespace IMAP2ExchSync
                     throw new InvalidOperationException("SMTP server respond to DATA request: " + serverResponse);
                 string line;
                 writer.WriteLine(addHeader);
+                writer.Flush();
                 int sended = 0;
+                int readed = 0;
                 DateTime TimerS = DateTime.Now;
-                while (!fileMessageRead.EndOfStream)
+                byte[] buff = new byte[1024];
+                int readFact = 0;
+                do
                 {
-                    line = fileMessageRead.ReadLine();
-                    if (line == ".")
+                    readFact = fileMessageRead.Read(buff, readed, 1024);
+                    //line = fileMessageRead.ReadLine();
+                    /*  if (line == ".")
+                      {
+                          line = line + ".";
+                      }*/
+                    if (readFact > 0)
                     {
-                        line = line + ".";
-                    }
-                    writer.WriteLine(line);
-                    sended += line.Length;
-                    if (TimerS.AddMilliseconds(200) < DateTime.Now)
-                    {
-                        Log(55, "Отправка: " + UID + " " + Synchinc.GetKBMBGB(sended.ToString()) + "/" + Synchinc.GetKBMBGB(Size));
-                        TimerS = DateTime.Now;
+                        writerB.Write(buff, 0, readFact);
+                        writerB.Flush();
+                        sended += readFact;
+
+                        if (TimerS.AddMilliseconds(200) < DateTime.Now)
+                        {
+                            Log(55, "Отправка: " + UID + " " + Synchinc.GetKBMBGB(sended.ToString()) + "/" + Synchinc.GetKBMBGB(Size));
+                            TimerS = DateTime.Now;
+                        }
                     }
                 }
+                while (readFact != 0);
+                writer.WriteLine();
                 writer.WriteLine(".");
+                //writer.WriteLine();
                 serverResponse = reader.ReadLine();
                 if (!serverResponse.StartsWith("250"))
                     throw new InvalidOperationException("SMTP server respond to end data request: " + serverResponse);
 
                 Log(12, String.Format("SMTP Mx message sent (from address: {0} to address: {1})", fromAddress, toAddress));
-                fileMessageRead = null;
+                //fileMessageRead = null;
                 sended = 0;
 
 

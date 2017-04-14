@@ -248,12 +248,16 @@ namespace IMAP2ExchSync
             {
 
                 threads.Clear();
-                
+                #if DEBUG 
+                threads.Add(new Synchinc(mainQueue, this, appSettings, "Поток 1", syncEvents));
+
+                #else
                 for (int i = 0; i < maxthreads; i++)
                 {
                     threads.Add(new Synchinc(mainQueue, this, appSettings, "Поток "+i.ToString(), syncEvents));
                 }
-                
+                #endif
+
 
             }
             return true;

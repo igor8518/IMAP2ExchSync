@@ -169,7 +169,7 @@ namespace IMAP2ExchSync
 
         public void LoadMessage(EmailMessage msg)
         {
-            msg.Load(new PropertySet(new PropertyDefinitionBase[] {
+            msg.Load(new PropertySet(new PropertyDefinitionBase[] { 
                     EmailMessageSchema.DateTimeReceived,
                     EmailMessageSchema.Id,
                     EmailMessageSchema.InternetMessageId,

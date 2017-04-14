@@ -71,8 +71,12 @@ namespace IMAP2ExchSync
                 cbMailFilter.Items.Add(m.ExchangeMailBox);
             }
             cbThreadFilter.Items.Add("");
+            cbThreadFilter.Items.Add("Поток 0");
             cbThreadFilter.Items.Add("Поток 1");
             cbThreadFilter.Items.Add("Поток 2");
+            cbThreadFilter.Items.Add("Поток 3");
+            cbThreadFilter.Items.Add("Поток 4");
+            cbThreadFilter.Items.Add("Поток 5");
             chbSync.Checked = appSetting.Sync;
             txtLogFileName.Text = appSetting.LogFileName;
             updLogLevel.Text = appSetting.LogLevel.ToString();
@@ -127,7 +131,7 @@ namespace IMAP2ExchSync
             IMAP2ExchSyncApplicationContext.table.RowChanged += delegate
             {
 
-                for (int i = 0; (i < (IMAP2ExchSyncApplicationContext.table.Rows.Count - 100)); i++)
+                for (int i = 0; (i < (IMAP2ExchSyncApplicationContext.table.Rows.Count - 10000)); i++)
                 {
                     IMAP2ExchSyncApplicationContext.table.Rows.RemoveAt(i);
                 }

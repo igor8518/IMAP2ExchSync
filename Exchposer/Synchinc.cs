@@ -52,8 +52,10 @@ namespace IMAP2ExchSync
         public List<string> exchMessageIDs = new List<string>();
         public List<MailMessageIDs> mailMessageIDs = new List<MailMessageIDs>();
         public List<String> mailMessage = new List<string>();
-        private StreamWriter fileMessage = null;
+        private BinaryWriter fileMessage = null;
+        private FileStream fileMessageB = null;
         private StreamReader fileMessageRead = null;
+
         public MailList<MailData> mailList = null;
         public MailList<MailData> DownLoadedmailList = null;
         public List<MailData> MailsToRemove = null;
@@ -251,8 +253,9 @@ namespace IMAP2ExchSync
                         {
                             mailServer.Open();
                             long startOctet = 0;
-                            fileMessage = new StreamWriter(new FileStream(fileMessageName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite));
-                            fileMessage.AutoFlush = true;
+                            //fileMessage = new BinaryWriter(new FileStream(fileMessageName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite));
+                            fileMessageB = new FileStream(fileMessageName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                            //fileMessage.AutoFlush = true;
                             long downloaded = 0;
                             if (File.Exists(fileMessageName))
                             {
@@ -265,9 +268,10 @@ namespace IMAP2ExchSync
                             SetNotifyIcon(Properties.Resources.AppIconBusy, 10, "Начало скачивания: " + mailList[i].subtitle + " " + GetKBMBGB(mailList[i].Size),true);
                             if (mailServer.DownloadMessage(mailList[i].UID, mailObject.MailFolderName, startOctet, (line) =>
                             {
-                                mailMessage.Add(line);
-                                fileMessage.WriteLine(line);
-                                downloaded += line.Length + 2;
+                                //mailMessage.Add(line);
+                                fileMessageB.Write(line, 0, line.Length);
+                                fileMessageB.Flush();
+                                downloaded += line.Length;
                                 if (TimerD.AddMilliseconds(200) < DateTime.Now)
                                 {
                                     SetNotifyIcon(Properties.Resources.AppIconBusy);
@@ -285,19 +289,22 @@ namespace IMAP2ExchSync
 
                             }))
                             {
-                                mailList[i].dateTimeDown = DateTime.Now;
-                                mailList[i].status = 1;
-                                mailList.Save();
-                                downloaded = 0;
-                                SetNotifyIcon(Properties.Resources.AppIconNormal, 10, "Конец скачивания: " + mailList[i].subtitle + " " + GetKBMBGB(mailList[i].Size), true);
+                                if (downloaded >= long.Parse(mailList[i].Size))
+                                {
+                                    mailList[i].dateTimeDown = DateTime.Now;
+                                    mailList[i].status = 1;
+                                    mailList.Save();
+                                    downloaded = 0;
+                                    SetNotifyIcon(Properties.Resources.AppIconNormal, 10, "Конец скачивания: " + mailList[i].subtitle + " " + GetKBMBGB(mailList[i].Size), true);
+                                }
                             }
                             else
                             {
-                                if (fileMessage != null)
+                                if (fileMessageB != null)
                                 {
-                                    fileMessage.Close();
-                                    fileMessage.Dispose();
-                                    fileMessage = null;
+                                    fileMessageB.Close();
+                                    fileMessageB.Dispose();
+                                    fileMessageB = null;
                                 }
                                 mailList.Save();
                                 downloaded = 0;
@@ -313,11 +320,11 @@ namespace IMAP2ExchSync
                                     Log(1, ex.Message);
                                 }*/
                             }
-                            if (fileMessage != null)
+                            if (fileMessageB != null)
                             {
-                                fileMessage.Close();
-                                fileMessage.Dispose();
-                                fileMessage = null;
+                                fileMessageB.Close();
+                                fileMessageB.Dispose();
+                                fileMessageB = null;
                             }
                             mailServer.Close();
                         }
@@ -332,7 +339,7 @@ namespace IMAP2ExchSync
                                 FileInfo file = new FileInfo(fileMessageName);
                                 if (file.Length >= long.Parse(mailList[i].Size))
                                 {
-
+                                    //mailServer.Open();
                                     string AddHeader = "Received: from " + mailObject.MailServerName + " (" + mailObject.MailServerName + " [" + Dns.GetHostEntry(mailObject.MailServerName).AddressList[0].ToString() + "])\n" +
                                     "\tby mailserv.maxim-td.ru with " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Name + " id " + System.Reflection.Assembly.GetExecutingAssembly().ImageRuntimeVersion + ";\n" +
                                     "\t" + mailList[i].dateTimeDown.ToUniversalTime().ToString("R");
@@ -350,6 +357,7 @@ namespace IMAP2ExchSync
                                     {
                                         SetNotifyIcon(Properties.Resources.AppIconNormal, 10, "Не удалось отправить: " + mailList[i].subtitle + " " + GetKBMBGB((int.Parse(mailList[i].Size) + AddHeader.Length).ToString()), true);
                                     }
+                                    mailServer.Close();
                                 }
                                 else
                                 {

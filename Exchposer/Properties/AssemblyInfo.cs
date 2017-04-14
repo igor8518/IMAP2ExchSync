@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("IMAP2ExchSync")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Alpha")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("KvazarStudio")]
 [assembly: AssemblyProduct("IMAP2ExchSync")]
@@ -32,8 +32,8 @@ using System.Runtime.InteropServices;
 //
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
-[assembly: AssemblyVersion("0.2.5.1310")]
+[assembly: AssemblyVersion("0.2.12.0003")]
 //[assembly: AssemblyVersion("0.2.1.555")]
-[assembly: AssemblyFileVersion("0.2.5.1310")]
+[assembly: AssemblyFileVersion("0.2.12.0003")]
 [assembly: NeutralResourcesLanguage("en")]
 
