@@ -14,6 +14,7 @@ namespace IMAP2ExchSync
 {
     public partial class OptionsForm : Form
     {
+        private Action<int, string> logger;
         public AppSettings appSetting { get; set; } = new AppSettings();
         private IIMAP2ExchSync exchposer = null;
 
@@ -25,48 +26,49 @@ namespace IMAP2ExchSync
         protected void Log(int level, string message)
         {
 
-            exchposer.Log(level, message);
+            logger(level, message);
 
         }
 
-        public OptionsForm(AppSettings appSetting, IIMAP2ExchSync exchposer)
+        public OptionsForm(AppSettings appSetting, IIMAP2ExchSync exchposer, Action<int, string> logger)
         {
+            this.logger = logger;
             InitializeComponent();
             dataGridView1.DataSource = null;
             dataGridView1.DataSource = exchposer.mailBindingSource;
             this.appSetting = appSetting;
-            //var bindingList = new BindingList<Mails>(appSetting.listMails);
+            //var bindingList = new BindingList<Mails>(appSetting.ListMails);
             //var source = new BindingSource(bindingList, null);
-            //mailsBindingSource.DataSource = appSetting.listMails;
+            //mailsBindingSource.DataSource = appSetting.ListMails;
             //dataGridView1.DataSource = mailsBindingSource;
             this.exchposer = exchposer;
-            if (appSetting.listMails.Count > 0)
+            if (appSetting.ListMails.Count > 0)
             {
-                txtExchangeUrl.Text = appSetting.listMails[0].ExchangeUrl;
-                txtExchangeDomain.Text = appSetting.listMails[0].ExchangeDomain;
-                txtExchangeUserName.Text = appSetting.listMails[0].ExchangeUserName;
-                txtExchangePassword.Text = appSetting.listMails[0].ExchangePassword;
-                updExchangeSubscriptionLifetime.Value = appSetting.listMails[0].ExchangeSubscriptionLifetime;
-                chkExchangeAcceptInvalidCertificate.Checked = appSetting.listMails[0].ExchangeAcceptInvalidCertificate;
+                txtExchangeUrl.Text = appSetting.ListMails[0].ExchangeUrl;
+                txtExchangeDomain.Text = appSetting.ListMails[0].ExchangeDomain;
+                txtExchangeUserName.Text = appSetting.ListMails[0].ExchangeUserName;
+                txtExchangePassword.Text = appSetting.ListMails[0].ExchangePassword;
+                updExchangeSubscriptionLifetime.Value = appSetting.ListMails[0].ExchangeSubscriptionLifetime;
+                chkExchangeAcceptInvalidCertificate.Checked = appSetting.ListMails[0].ExchangeAcceptInvalidCertificate;
 
-                txtMailServerName.Text = appSetting.listMails[0].MailServerName;
-                txtMailServerPort.Text = appSetting.listMails[0].MailServerPort.ToString();
-                cboMailServerType.SelectedIndex = (int)appSetting.listMails[0].MailServerType - 1;
-                txtMailUserName.Text = appSetting.listMails[0].MailUserName;
-                txtMailPassword.Text = appSetting.listMails[0].MailPassword;
-                txtMailToAddress.Text = appSetting.listMails[0].MailToAddress;
-                txtMailFolderName.Text = appSetting.listMails[0].MailFolderName;
+                txtMailServerName.Text = appSetting.ListMails[0].MailServerName;
+                txtMailServerPort.Text = appSetting.ListMails[0].MailServerPort.ToString();
+                cboMailServerType.SelectedIndex = (int)appSetting.ListMails[0].MailServerType - 1;
+                txtMailUserName.Text = appSetting.ListMails[0].MailUserName;
+                txtMailPassword.Text = appSetting.ListMails[0].MailPassword;
+                txtMailToAddress.Text = appSetting.ListMails[0].MailToAddress;
+                txtMailFolderName.Text = appSetting.ListMails[0].MailFolderName;
                 txtMailboxList.Items.Clear();
-                if (appSetting.listMails[0].ExchangeMailBox != "")
+                if (appSetting.ListMails[0].ExchangeMailBox != "")
                 {
-                    txtMailboxList.Items.Add(appSetting.listMails[0].ExchangeMailBox);
+                    txtMailboxList.Items.Add(appSetting.ListMails[0].ExchangeMailBox);
                     txtMailboxList.SelectedIndex = 0;
                 }
 
-                chkSyncEnabled.Checked = appSetting.listMails[0].SyncEnabled;
+                chkSyncEnabled.Checked = appSetting.ListMails[0].SyncEnabled;
             }
             cbMailFilter.Items.Add("");
-            foreach (Mails m in appSetting.listMails)
+            foreach (Mails m in appSetting.ListMails)
             {
                 cbMailFilter.Items.Add(m.ExchangeMailBox);
             }
@@ -77,10 +79,10 @@ namespace IMAP2ExchSync
             cbThreadFilter.Items.Add("Поток 3");
             cbThreadFilter.Items.Add("Поток 4");
             cbThreadFilter.Items.Add("Поток 5");
-            chbSync.Checked = appSetting.Sync;
+            chbSync.Checked = appSetting.AutoSynch;
             txtLogFileName.Text = appSetting.LogFileName;
-            updLogLevel.Text = appSetting.LogLevel.ToString();
-            chkLogClearOnStartup.Checked = appSetting.LogClearOnStartup;
+            updLogLevel.Text = appSetting.DefLogLevel.ToString();
+            chkLogClearOnStartup.Checked = appSetting.DefLogClearOnStartup;
 
             chkAutoRun.Checked = exchposer.AutoRun;
 
@@ -96,8 +98,8 @@ namespace IMAP2ExchSync
             //"Алена", "Наташа", "Марина", "Глаша", "Люба" };
           
             this.BindingSource = new BindingSource();
-            this.BindingSource.DataSource = IMAP2ExchSyncApplicationContext.table;
-            //Array.ForEach(names, x => table.Rows.Add(x));
+            this.BindingSource.DataSource = IMAP2ExchSyncApplicationContext.LogTableForm;
+            //Array.ForEach(names, x => LogTableForm.Rows.Add(x));
             this.ListBox.DataSource = this.BindingSource;
             this.ListBox.DisplayMember = "LOG";
             this.cbMail.SelectedIndexChanged += delegate
@@ -128,12 +130,12 @@ namespace IMAP2ExchSync
                     MessageBox.Show(String.Format("Ошибка фильтра логов:" + " {0}", ex.Message));
                 }
             };
-            IMAP2ExchSyncApplicationContext.table.RowChanged += delegate
+            IMAP2ExchSyncApplicationContext.LogTableForm.RowChanged += delegate
             {
 
-                for (int i = 0; (i < (IMAP2ExchSyncApplicationContext.table.Rows.Count - 10000)); i++)
+                for (int i = 0; (i < (IMAP2ExchSyncApplicationContext.LogTableForm.Rows.Count - 10000)); i++)
                 {
-                    IMAP2ExchSyncApplicationContext.table.Rows.RemoveAt(i);
+                    IMAP2ExchSyncApplicationContext.LogTableForm.Rows.RemoveAt(i);
                 }
 
                 ListBox.SelectedIndex = ListBox.Items.Count - 1;
@@ -180,7 +182,7 @@ namespace IMAP2ExchSync
             else
             {
                 //txtLogView.AppendText(msg);
-                //IMAP2ExchSyncApplicationContext.table.Rows.Add(msg);
+                //IMAP2ExchSyncApplicationContext.LogTableForm.Rows.Add(msg);
 
 
             }
@@ -191,51 +193,51 @@ namespace IMAP2ExchSync
             {
                 if (index >= 0)
                 {
-                    if (index > appSetting.listMails.Count - 1)
+                    if (index > appSetting.ListMails.Count - 1)
                     {
-                        appSetting.listMails.Add(new Mails());
+                        appSetting.ListMails.Add(new Mails());
                     }
-                    appSetting.listMails[index].ExchangeUrl = txtExchangeUrl.Text;
-                    appSetting.listMails[index].ExchangeDomain = txtExchangeDomain.Text;
-                    appSetting.listMails[index].ExchangeUserName = txtExchangeUserName.Text;
+                    appSetting.ListMails[index].ExchangeUrl = txtExchangeUrl.Text;
+                    appSetting.ListMails[index].ExchangeDomain = txtExchangeDomain.Text;
+                    appSetting.ListMails[index].ExchangeUserName = txtExchangeUserName.Text;
                     try
                     {
-                        appSetting.listMails[index].ExchangePassword = txtExchangePassword.Text;
+                        appSetting.ListMails[index].ExchangePassword = txtExchangePassword.Text;
                     }
                     catch (Exception ex)
                     {
                         MessageBox.Show(ex.Message);
                     }
-                    appSetting.listMails[index].ExchangeSubscriptionLifetime = (int)updExchangeSubscriptionLifetime.Value;
-                    appSetting.listMails[index].ExchangeAcceptInvalidCertificate = chkExchangeAcceptInvalidCertificate.Checked;
+                    appSetting.ListMails[index].ExchangeSubscriptionLifetime = (int)updExchangeSubscriptionLifetime.Value;
+                    appSetting.ListMails[index].ExchangeAcceptInvalidCertificate = chkExchangeAcceptInvalidCertificate.Checked;
 
-                    appSetting.listMails[index].MailServerName = txtMailServerName.Text;
-                    appSetting.listMails[index].MailServerPort = Convert.ToInt32(txtMailServerPort.Text);
-                    appSetting.listMails[index].MailServerType = (MailServerTypes)(cboMailServerType.SelectedIndex + 1);
-                    appSetting.listMails[index].MailUserName = txtMailUserName.Text;
-                    appSetting.listMails[index].MailPassword = txtMailPassword.Text;
-                    appSetting.listMails[index].MailToAddress = txtMailToAddress.Text;
-                    appSetting.listMails[index].MailFolderName = txtMailFolderName.Text;
-                    //appSetting.listMails[index].LastStatus = "LAST";
+                    appSetting.ListMails[index].MailServerName = txtMailServerName.Text;
+                    appSetting.ListMails[index].MailServerPort = Convert.ToInt32(txtMailServerPort.Text);
+                    appSetting.ListMails[index].MailServerType = (MailServerTypes)(cboMailServerType.SelectedIndex + 1);
+                    appSetting.ListMails[index].MailUserName = txtMailUserName.Text;
+                    appSetting.ListMails[index].MailPassword = txtMailPassword.Text;
+                    appSetting.ListMails[index].MailToAddress = txtMailToAddress.Text;
+                    appSetting.ListMails[index].MailFolderName = txtMailFolderName.Text;
+                    //appSetting.ListMails[index].LastStatus = "LAST";
                     if (txtMailboxList.SelectedIndex >= 0)
                     {
-                        appSetting.listMails[index].ExchangeMailBox = txtMailboxList.Items[txtMailboxList.SelectedIndex].ToString();
+                        appSetting.ListMails[index].ExchangeMailBox = txtMailboxList.Items[txtMailboxList.SelectedIndex].ToString();
                     }
                     else
                     {
-                        appSetting.listMails[index].ExchangeMailBox = "";
+                        appSetting.ListMails[index].ExchangeMailBox = "";
                     }
 
-                    appSetting.listMails[index].SyncEnabled = chkSyncEnabled.Checked;
+                    appSetting.ListMails[index].SyncEnabled = chkSyncEnabled.Checked;
                 }
                 appSetting.LogFileName = txtLogFileName.Text;
-                appSetting.LogLevel = Convert.ToInt32(updLogLevel.Text);
-                appSetting.LogClearOnStartup = chkLogClearOnStartup.Checked;
-                appSetting.Sync = chbSync.Checked;
+                appSetting.DefLogLevel = Convert.ToInt32(updLogLevel.Text);
+                appSetting.DefLogClearOnStartup = chkLogClearOnStartup.Checked;
+                appSetting.AutoSynch = chbSync.Checked;
                 
                 exchposer.AutoRun = chkAutoRun.Checked;
                 //dataGridView1.DataSource = null;
-                //mailsBindingSource.DataSource = appSetting.listMails;
+                //mailsBindingSource.DataSource = appSetting.ListMails;
             }
         }
 
@@ -328,7 +330,7 @@ namespace IMAP2ExchSync
         private void txtMailboxList_DropDown(object sender, EventArgs e)
         {
             ExchangeServer Ex = new ExchangeServer(txtExchangeUserName.Text, txtExchangePassword.Text, 
-                txtExchangeDomain.Text, txtExchangeUrl.Text, exchposer.ExchangeReconnectTimeout,exchposer,"" );
+                txtExchangeDomain.Text, txtExchangeUrl.Text, exchposer.ExchangeReconnectTimeout,exchposer, logger, "" );
             Ex.Open();
             txtMailboxList.Items.Clear();
             SearchableMailbox[] mailboxes = Ex.GetMailboxes();
@@ -366,28 +368,28 @@ namespace IMAP2ExchSync
             if (dataGridView1.SelectedRows.Count > 0)
             {
                 btnChange.Enabled = true;
-                txtExchangeUrl.Text = appSetting.listMails[dataGridView1.SelectedRows[0].Index].ExchangeUrl;
-                txtExchangeDomain.Text = appSetting.listMails[dataGridView1.SelectedRows[0].Index].ExchangeDomain;
-                txtExchangeUserName.Text = appSetting.listMails[dataGridView1.SelectedRows[0].Index].ExchangeUserName;
-                txtExchangePassword.Text = appSetting.listMails[dataGridView1.SelectedRows[0].Index].ExchangePassword;
-                updExchangeSubscriptionLifetime.Value = appSetting.listMails[dataGridView1.SelectedRows[0].Index].ExchangeSubscriptionLifetime;
-                chkExchangeAcceptInvalidCertificate.Checked = appSetting.listMails[dataGridView1.SelectedRows[0].Index].ExchangeAcceptInvalidCertificate;
+                txtExchangeUrl.Text = appSetting.ListMails[dataGridView1.SelectedRows[0].Index].ExchangeUrl;
+                txtExchangeDomain.Text = appSetting.ListMails[dataGridView1.SelectedRows[0].Index].ExchangeDomain;
+                txtExchangeUserName.Text = appSetting.ListMails[dataGridView1.SelectedRows[0].Index].ExchangeUserName;
+                txtExchangePassword.Text = appSetting.ListMails[dataGridView1.SelectedRows[0].Index].ExchangePassword;
+                updExchangeSubscriptionLifetime.Value = appSetting.ListMails[dataGridView1.SelectedRows[0].Index].ExchangeSubscriptionLifetime;
+                chkExchangeAcceptInvalidCertificate.Checked = appSetting.ListMails[dataGridView1.SelectedRows[0].Index].ExchangeAcceptInvalidCertificate;
 
-                txtMailServerName.Text = appSetting.listMails[dataGridView1.SelectedRows[0].Index].MailServerName;
-                txtMailServerPort.Text = appSetting.listMails[dataGridView1.SelectedRows[0].Index].MailServerPort.ToString();
-                cboMailServerType.SelectedIndex = (int)appSetting.listMails[dataGridView1.SelectedRows[0].Index].MailServerType - 1;
-                txtMailUserName.Text = appSetting.listMails[dataGridView1.SelectedRows[0].Index].MailUserName;
-                txtMailPassword.Text = appSetting.listMails[dataGridView1.SelectedRows[0].Index].MailPassword;
-                txtMailToAddress.Text = appSetting.listMails[dataGridView1.SelectedRows[0].Index].MailToAddress;
-                txtMailFolderName.Text = appSetting.listMails[dataGridView1.SelectedRows[0].Index].MailFolderName;
+                txtMailServerName.Text = appSetting.ListMails[dataGridView1.SelectedRows[0].Index].MailServerName;
+                txtMailServerPort.Text = appSetting.ListMails[dataGridView1.SelectedRows[0].Index].MailServerPort.ToString();
+                cboMailServerType.SelectedIndex = (int)appSetting.ListMails[dataGridView1.SelectedRows[0].Index].MailServerType - 1;
+                txtMailUserName.Text = appSetting.ListMails[dataGridView1.SelectedRows[0].Index].MailUserName;
+                txtMailPassword.Text = appSetting.ListMails[dataGridView1.SelectedRows[0].Index].MailPassword;
+                txtMailToAddress.Text = appSetting.ListMails[dataGridView1.SelectedRows[0].Index].MailToAddress;
+                txtMailFolderName.Text = appSetting.ListMails[dataGridView1.SelectedRows[0].Index].MailFolderName;
                 txtMailboxList.Items.Clear();
-                if (appSetting.listMails[0].ExchangeMailBox != "")
+                if (appSetting.ListMails[0].ExchangeMailBox != "")
                 {
-                    txtMailboxList.Items.Add(appSetting.listMails[dataGridView1.SelectedRows[0].Index].ExchangeMailBox);
+                    txtMailboxList.Items.Add(appSetting.ListMails[dataGridView1.SelectedRows[0].Index].ExchangeMailBox);
                     txtMailboxList.SelectedIndex = 0;
                 }
 
-                chkSyncEnabled.Checked = appSetting.listMails[dataGridView1.SelectedRows[0].Index].SyncEnabled;
+                chkSyncEnabled.Checked = appSetting.ListMails[dataGridView1.SelectedRows[0].Index].SyncEnabled;
             }
             else
             {
@@ -397,7 +399,7 @@ namespace IMAP2ExchSync
 
         private void btnAdd_Click(object sender, EventArgs e)
         {
-            UpdateSettings(dataGridView1.RowCount);
+            UpdateSettings(dataGridView1.RowCount-1);
         }
 
         private void btnChange_Click(object sender, EventArgs e)

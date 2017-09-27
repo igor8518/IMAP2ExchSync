@@ -17,7 +17,8 @@ namespace IMAP2ExchSync
         private string exchangeDomain = null;
         private string exchangeUrl = null;
         private string exchangeUserMailbox = null;
-        
+        private Action<int, string> logger = null;
+
         private ExchangeService service = null;
 
        // private StreamingSubscriptionConnection subscriptionConnection = null;
@@ -32,15 +33,15 @@ namespace IMAP2ExchSync
         protected void Log(int level, string message)
         {
 
-           exchposer.Log(level, message);
+           logger(level, message);
            // logger?.Invoke(level, message);
         }
 
         public ExchangeServer(string exchangeUserName, string exchangePassword, string exchangeDomain, string exchangeUrl,
-            int restartTimeout, IIMAP2ExchSync exchposer, string UserMailbox = "")
+            int restartTimeout, IIMAP2ExchSync exchposer, Action<int, string> logger, string UserMailbox = "")
         {
             this.exchposer = exchposer;
-            //this.logger = logger;
+            this.logger = logger;
             this.exchangeUserName = exchangeUserName;
             this.exchangePassword = exchangePassword;
             this.exchangeDomain = exchangeDomain;

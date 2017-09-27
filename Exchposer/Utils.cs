@@ -99,17 +99,27 @@ namespace IMAP2ExchSync
             
             T t;
 
-
-            if ((fileName != null) && File.Exists(fileName))
-                using (TextReader reader = new StreamReader(fileName))
+            try
+            {
+                if ((fileName != null) && File.Exists(fileName))
+                    using (TextReader reader = new StreamReader(fileName))
+                    {
+                        t = (T)(new XmlSerializer(typeof(T))).Deserialize(reader);
+                        t.fileName = fileName;
+                    }
+                else
                 {
-                    t = (T)(new XmlSerializer(typeof(T))).Deserialize(reader);
+                    //t = null;
+                    t = new T();
+                    t.fileName = fileName;
                 }
-            else
-                t = new T();
-
-            t.fileName = fileName;
-            return t;
+                return t;
+            }
+            catch (Exception ex)
+            {
+                
+                throw;
+            }
         }
 
         public static void Load(ref T t, string fileName = null)
@@ -133,7 +143,7 @@ namespace IMAP2ExchSync
         */
     }
 
-    public class FileString
+    /*public class FileString
     {
         private string fileName = null;
         private string value = null;
@@ -171,10 +181,30 @@ namespace IMAP2ExchSync
 
             return value;
         }
-    }
+    }*/
+    public class LogObject
+    {
 
+        public MailData mailData = null;
+        public string message = "";
+        public int status = 0;
+        public int type = 20;
+        public Mails mails = null;
+        public LogObject()
+        {
+
+        }
+        public LogObject(LogObject logObject)
+        {
+            this.mails = logObject.mails;
+            this.message = logObject.message;
+            this.type = logObject.type;
+            this.status = logObject.status;
+        }
+    }
     public class MailData
     {
+        
         public string UID = "";
         public string Size = "0";
         public string messageID = "<>";
@@ -183,20 +213,39 @@ namespace IMAP2ExchSync
         public DateTime dateTimeSend = DateTime.MinValue;
         public int status = 0;
         public string subtitle = "";
+        public string GUID = "";
+        public string progress = "";
+        public string ToName = "";
+        public string ToAddress = "";
+        public string FromName = "";
+        public string FromAddress = "";
         public MailData()
         {
             UID = "";
             messageID = "<>";
             dateTime = DateTime.Now;
             subtitle = "";
+            ToName = "";
+            ToAddress = "";
+            FromName = "";
+            FromAddress = "";
+            GUID = "";
         }
-        public MailData(string UID, string messageID, DateTime dateTime,string subtitle, string Size = "0")
+        public MailData(string UID, string messageID, DateTime dateTime,string subtitle, string Size = "0", string ToName = "", string ToAddress = "", string FromName = "", string FromAddress = "", string GUID = "")
         {
             this.Size = Size;
             this.UID = UID;
             this.messageID = messageID;
             this.dateTime = dateTime;
-            this.subtitle = subtitle;        }
+            this.subtitle = subtitle;
+            
+            this.ToName = ToName;
+            this.ToAddress = ToAddress;
+            this.FromName = FromName;
+            this.FromAddress = FromAddress;
+            this.GUID = GUID;
+        }
+       
     }
     
     public class MailList<MailData>  : XmlSettings<MailList<MailData>>, IEnumerable<MailData>, IList<MailData> where MailData : IMAP2ExchSync.MailData
@@ -216,6 +265,18 @@ namespace IMAP2ExchSync
             }
         }
         private List<MailData> mailList = new List<MailData>();
+        public long GetMaxUID()
+        {
+            long maxUID = 0;
+            for (int i=0; i<Count; i++)
+            {
+                if (long.Parse(((IList<MailData>)mailList)[i].UID)>maxUID)
+                {
+                    maxUID = long.Parse(((IList<MailData>)mailList)[i].UID);
+                }
+            }
+            return maxUID;
+        }
         public string fileName = null;
         public MailList()
         {

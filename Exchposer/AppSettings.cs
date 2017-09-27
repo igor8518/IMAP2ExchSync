@@ -16,13 +16,15 @@ namespace IMAP2ExchSync
         public static string AppDefaultFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppName);
         
 
-        public List<Mails> listMails = new List<Mails>();
-        public int MaxDaysToSync = 7;
+        public List<Mails> ListMails = new List<Mails>();
+        public int DefMaxDaysFullSync = 7;
 
-        public string LogFileName = Path.Combine(AppDefaultFolder, "log.txt");
-        public int LogLevel = 11;
-        public bool LogClearOnStartup = true;
-        public bool Sync = false;
+        public string LogFileName = Path.Combine(AppDefaultFolder, "Log.txt");
+        public int DefLogLevel = 11;
+        public bool DefLogClearOnStartup = true;
+        public bool AutoSynch = false;
+        public bool DefSyncEnabled = false;
+        public int maxThreads = 3;
 
         public void Copy(AppSettings appSettings)
         {
@@ -44,12 +46,12 @@ namespace IMAP2ExchSync
                  MailFolderName = appSettings.MailFolderName;
                  MailPassword = appSettings.MailPassword;
                  SyncEnabled = appSettings.SyncEnabled;*/
-                listMails = appSettings.listMails;
-                MaxDaysToSync = appSettings.MaxDaysToSync;
+                ListMails = appSettings.ListMails;
+                DefMaxDaysFullSync = appSettings.DefMaxDaysFullSync;
                 LogFileName = appSettings.LogFileName;
-                LogLevel = appSettings.LogLevel;
-                LogClearOnStartup = appSettings.LogClearOnStartup;
-                Sync = appSettings.Sync;
+                DefLogLevel = appSettings.DefLogLevel;
+                DefLogClearOnStartup = appSettings.DefLogClearOnStartup;
+                AutoSynch = appSettings.AutoSynch;
             }
         }
 
@@ -61,9 +63,16 @@ namespace IMAP2ExchSync
         */
         
     }
-    public class Mails : INotifyPropertyChanged
+    public class Mails : INotifyPropertyChanged, ICloneable
     {
-      
+        public object Clone()
+        {
+            Mails newMailsObject = new Mails();
+          /*  newMailsObject. = (Mails)this.mails.Clone();
+            newMailsObject.message = message;
+            newMailsObject.type = type;*/
+            return newMailsObject;
+        }
         public event PropertyChangedEventHandler PropertyChanged; // Событие, которое нужно вызывать при изменении
         private void NotifyPropertyChanged(String propertyName = "")
         {
@@ -80,6 +89,10 @@ namespace IMAP2ExchSync
         public string ExchangePasswordCrypted = "";
         [XmlIgnore]
         private string exchangeMailBox;
+        [XmlIgnore]
+        public MailData currentMailWork = null;
+        /*[XmlIgnore]
+        public string Progress = "";*/
 
         public string ExchangeMailBox
         {
@@ -96,6 +109,8 @@ namespace IMAP2ExchSync
 
         [XmlIgnore]
         private string lastStatus;
+        [XmlIgnore]
+        public string Thread;
         public string LastStatus
         {
             get { return lastStatus; }

@@ -23,7 +23,7 @@ namespace IMAP2ExchSync
         protected void Log(int level, string message)
         {
 
-            exchposer.Log(level, message);
+            //exchposer.Log(level, message);
 
         }
         // Producer.ThreadRun
@@ -63,7 +63,7 @@ namespace IMAP2ExchSync
         protected void Log(int level, string message)
         {
 
-            exchposer.Log(level, message);
+           // exchposer.Log(level, message);
 
         }
         // Producer.ThreadRun

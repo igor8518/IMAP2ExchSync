@@ -1,4 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
+<?define VarProductVersion=""0.2.1704.13"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -6,7 +7,7 @@
     <ProductVersion>3.8</ProductVersion>
     <ProjectGuid>c9af9d20-b7e0-4c46-bc18-1795ed5379fe</ProjectGuid>
     <SchemaVersion>2.0</SchemaVersion>
-    <OutputName>ExchposerSetup</OutputName>
+    <OutputName>IMAP2ExchSync_Setup_$(VarProductVersion)</OutputName>
     <OutputType>Package</OutputType>
     <WixTargetsPath Condition=" '$(WixTargetsPath)' == '' AND '$(MSBuildExtensionsPath32)' != '' ">$(MSBuildExtensionsPath32)\Microsoft\WiX\v3.x\Wix.targets</WixTargetsPath>
     <WixTargetsPath Condition=" '$(WixTargetsPath)' == '' ">$(MSBuildExtensionsPath)\Microsoft\WiX\v3.x\Wix.targets</WixTargetsPath>
@@ -14,18 +15,21 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
-    <DefineConstants>Debug</DefineConstants>
+    <DefineConstants>Debug;</DefineConstants>
+    <Cultures>ru-RU</Cultures>
+    <VerboseOutput>True</VerboseOutput>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+    <Cultures>ru-RU</Cultures>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Product.wxs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Exchposer\Exchposer.csproj">
-      <Name>Exchposer</Name>
+    <ProjectReference Include="..\Exchposer\IMAP2ExchSync.csproj">
+      <Name>IMAP2ExchSync</Name>
       <Project>{22886835-85e6-47f0-b29b-94c19c24d43f}</Project>
       <Private>True</Private>
       <DoNotHarvest>True</DoNotHarvest>

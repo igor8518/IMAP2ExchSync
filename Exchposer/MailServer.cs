@@ -127,8 +127,8 @@ namespace IMAP2ExchSync
         }
 
         protected const int connectTimeout = 5000;
-        protected const int readTimeout = 10000;
-        protected const int writeTimeout = 10000;
+        protected const int readTimeout = 100000;
+        protected const int writeTimeout = 100000;
 
         protected string server = null;
         protected int port = 0;
@@ -176,6 +176,7 @@ namespace IMAP2ExchSync
 
                 throw;
             }
+            //return "";
         }
 
         virtual public bool GetMessageIDs(DateTime fromTime, DateTime toTime, string mailBox, Action<MailMessageIDs> messageAction)
@@ -186,7 +187,7 @@ namespace IMAP2ExchSync
         {
             return false;
         }
-        virtual public bool DownloadMessage(string UID, string mailBox, long StartOctet, Action<byte[]> messageAction)
+        virtual public bool DownloadMessage(string UID, string mailBox, long StartOctet, Func<byte[], bool> messageAction)
         {
             return false;
         }
@@ -205,9 +206,11 @@ namespace IMAP2ExchSync
                 Log(22, String.Format("Mail server connection closed"));
             }
             client = null;
+            //return "";
         }
 
         abstract public void Send(string fromAddress, string toAddress, string folderName, string fileToSend, string addHeader,string UID,string Size);
+        
     }
 
 
@@ -544,13 +547,13 @@ namespace IMAP2ExchSync
                         throw new InvalidOperationException("IMAP server respond to SEARCH request: " + searchResult);
                     }
                     //uid fetch x:y body[header.fields (message-id)]
-                    sendMess = "FCH UID FETCH " + startUID + ":" + endUID + " (RFC822.SIZE BODY[HEADER.FIELDS (message-id subject date)])";
+                    sendMess = "FCH UID FETCH " + startUID + ":" + endUID + " (RFC822.SIZE BODY[HEADER.FIELDS (message-id subject date from)])";
                     writer.WriteLine(sendMess);
                     Log(21, sendMess);
                     string fetchResult = reader.ReadLine();
                     Log(21, fetchResult);
                     string[] fetchhArray = fetchResult.Split(' ');
-
+                    string from = "";
                     if (fetchhArray[0] == "*")
                     {
 
@@ -560,6 +563,7 @@ namespace IMAP2ExchSync
                             mailID.UIDMessage = fetchhArray[4];
                             mailID.Size = fetchhArray[6];
                             mailID.Subject = "";
+                            string lastCase = "";
                             while (fetchResult != ")")
                             {
                                 fetchResult = reader.ReadLine();
@@ -569,13 +573,23 @@ namespace IMAP2ExchSync
                                     case "MESSAGE-ID:":
                                         {
                                             mailID.MessageID = fetchhArray[1];
+                                            lastCase = "MESSAGE-ID:";
                                             break;
                                         }
                                     case "SUBJECT:":
                                         {
                                             mailID.Subject += DecodeText(fetchResult.Substring(9));
+                                            lastCase = "SUBJECT:";
                                             break;
-                                        }                         
+                                        }
+                                    case "FROM:":
+                                        {
+                                            from = DecodeText(fetchResult.Substring(6));
+                                            
+                                            //mailID.From += DecodeText(fetchResult.Substring(6));
+                                            lastCase = "FROM:";
+                                            break;
+                                        }
                                     case "DATE:":
                                         {
                                             try
@@ -594,7 +608,9 @@ namespace IMAP2ExchSync
                                                     mailID.dateTime = DateTime.MinValue;
                                                 }
                                             }
+                                            lastCase = "DATE:";
                                             break;
+                                            
                                         }
                                     case ")":
                                         {
@@ -602,20 +618,56 @@ namespace IMAP2ExchSync
                                         }
                                     default:
                                         {
-                                            if (fetchResult.Length > 0)
-                                            {
-                                                mailID.Subject += DecodeText(fetchResult.Substring(1));
-                                            }
+                                            switch(lastCase)
+                                                   {
+                                                case "SUBJECT:":
+                                                    {
+                                                        if (fetchResult.Length > 0)
+                                                        {
+                                                            mailID.Subject += DecodeText(fetchResult.Substring(1));
+                                                        }
+                                                        break;
+                                                    }
+                                                case "FROM:":
+                                                    {
+                                                        if (fetchResult.Length > 0)
+                                                        {
+                                                            from = DecodeText(fetchResult.Substring(6));
+                                                        }
+                                                        break;
+
+                                                    }
+                                                default:
+                                                    {
+                                                        break;
+                                                    }
+                                        }
                                             break;
+                                        
                                         }
                                 }
 
+
+                            }
+                            if (from != "")
+                            {
+                                int Ls = from.IndexOf('<');
+                                int Rs = from.IndexOf('>');
+                                if ((Ls < 0) || (Rs < 0))
+                                {
+                                    mailID.FromAddress = from;
+                                }
+                                else
+                                {
+                                    mailID.FromName += from.Substring(0, Ls);
+                                    mailID.FromAddress += from.Substring(Ls + 1, Rs - Ls - 1);
+                                }
                             }
                             //mailID.Subject = Base64Decode(mailID.Subject);
                             messageAction(mailID);
                             fetchResult = reader.ReadLine();
                             fetchhArray = fetchResult.Split(' ');
-
+                            from = "";
                         }
                         while (fetchResult.StartsWith("*"));
 
@@ -821,7 +873,7 @@ namespace IMAP2ExchSync
 
         }
 
-        override public bool DownloadMessage(string UID, string mailBox, long StartOctet, Action<byte[]> messageAction)
+        override public bool DownloadMessage(string UID, string mailBox, long StartOctet, Func<byte[], bool> messageAction)
         {
             try
             {
@@ -888,7 +940,10 @@ namespace IMAP2ExchSync
                                 //fetchResult = fetchBytes.ToString();
                                 downloaded += fetchBytes.Length;
 
-                                messageAction(fetchBytes);
+                                if (!messageAction(fetchBytes))
+                                {
+                                    return false;
+                                }
                             }
                             else
                             {
@@ -1035,6 +1090,8 @@ namespace IMAP2ExchSync
         public string UIDMessage;
         public string Subject;
         public string Size;
+        public string FromName;
+        public string FromAddress;
         public DateTime dateTime;
     }
 
@@ -1082,20 +1139,30 @@ namespace IMAP2ExchSync
                 serverResponse = clearTextReader.ReadLine();
                 if (!serverResponse.StartsWith("250"))
                     throw new InvalidOperationException("SMTP server respond to HELO request: " + serverResponse);
+                /////////////////////////////
+                //clearTextWriter.WriteLine("STARTTLS");
+                //serverResponse = clearTextReader.ReadLine();
+                //if (!serverResponse.StartsWith("220"))
+                //    throw new InvalidOperationException("SMTP server respond to STARTTLS request: " + serverResponse);
 
-                clearTextWriter.WriteLine("STARTTLS");
-                serverResponse = clearTextReader.ReadLine();
-                if (!serverResponse.StartsWith("220"))
-                    throw new InvalidOperationException("SMTP server respond to STARTTLS request: " + serverResponse);
+                //sslStream = new SslStream(stream);
+                //sslStream.AuthenticateAsClient(server);
 
-                sslStream = new SslStream(stream);
-                sslStream.AuthenticateAsClient(server);
 
-                reader = new StreamReaderWithLog(sslStream);
-                writer = new StreamWriterWithLog(sslStream) { AutoFlush = true };
+                //reader = new StreamReaderWithLog(sslStream);
+                //writer = new StreamWriterWithLog(sslStream) { AutoFlush = true };
 
-                readerB = new BinaryReaderS(sslStream);
-                writerB = new BinaryWriter(sslStream);
+
+
+                //readerB = new BinaryReaderS(sslStream);
+                //writerB = new BinaryWriter(sslStream);
+                ////////////////////////////////
+                reader = new StreamReaderWithLog(stream);
+                writer = new StreamWriterWithLog(stream) { AutoFlush = true };
+
+                readerB = new BinaryReaderS(stream);
+                writerB = new BinaryWriter(stream);
+                ////////////////////////////////
 
                 reader.BaseStream.ReadTimeout = readTimeout;
                 writer.BaseStream.ReadTimeout = writeTimeout;
@@ -1115,8 +1182,8 @@ namespace IMAP2ExchSync
 
                 var authString = Convert.ToBase64String(Encoding.ASCII.GetBytes("\0" + userName + "\0" + password));
                 authString = userName + " " + password;
-                writer.WriteLine("AUTH LOGIN " + authString);
-                serverResponse = reader.ReadLine();
+                //writer.WriteLine("AUTH LOGIN " + authString);
+                //serverResponse = reader.ReadLine();
                 //if (!serverResponse.StartsWith("235"))
                 //    throw new InvalidOperationException("SMTP server respond to AUTH PLAIN request: " + serverResponse);
 
@@ -1147,7 +1214,7 @@ namespace IMAP2ExchSync
                 clearTextReader = null;
 
                 base.Close();
-
+                
                 throw;
             }
         }
@@ -1229,10 +1296,10 @@ namespace IMAP2ExchSync
                 if (!serverResponse.StartsWith("250"))
                     throw new InvalidOperationException("SMTP server respond to RCPT TO request: " + serverResponse);
 
-                writer.WriteLine("DATA");
-                serverResponse = reader.ReadLine();
+                writer.WriteLine("BDAT "+ Size.ToString()+" LAST");
+                /*serverResponse = reader.ReadLine();
                 if (!serverResponse.StartsWith("354"))
-                    throw new InvalidOperationException("SMTP server respond to DATA request: " + serverResponse);
+                    throw new InvalidOperationException("SMTP server respond to DATA request: " + serverResponse);*/
                 string line;
                 writer.WriteLine(addHeader);
                 writer.Flush();
@@ -1263,8 +1330,8 @@ namespace IMAP2ExchSync
                     }
                 }
                 while (readFact != 0);
-                writer.WriteLine();
-                writer.WriteLine(".");
+                //writer.WriteLine();
+                //writer.WriteLine(".");
                 //writer.WriteLine();
                 serverResponse = reader.ReadLine();
                 if (!serverResponse.StartsWith("250"))
@@ -1288,9 +1355,10 @@ namespace IMAP2ExchSync
                     fileMessageRead.Close();
                     fileMessageRead.Dispose();
                 }
+                
 
             }
-           }
+        }
        }
 
 

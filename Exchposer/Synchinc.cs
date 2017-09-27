@@ -44,7 +44,7 @@ namespace IMAP2ExchSync
         ExchangeServer exchangeServer = null;
         private const int exchangeReconnectTimeout = 10;
         private IIMAP2ExchSync exchposer = null;
-        private FileString syncId = null;
+        //private FileString syncId = null;
         public string threadName = "";
         public Mails mailObject = null;
         private SyncEvents syncEvents;
@@ -55,6 +55,8 @@ namespace IMAP2ExchSync
         private BinaryWriter fileMessage = null;
         private FileStream fileMessageB = null;
         private StreamReader fileMessageRead = null;
+        private Action<LogObject> logger = null;
+        
 
         public MailList<MailData> mailList = null;
         public MailList<MailData> DownLoadedmailList = null;
@@ -62,8 +64,9 @@ namespace IMAP2ExchSync
         public SmtpServer smtp = null;
         private string fileMessageName = "";
 
-        public Synchinc(Queue<Mails> queue, IIMAP2ExchSync exchposer, AppSettings appSettings, string name, SyncEvents syncEvents)
+        public Synchinc(Queue<Mails> queue, IIMAP2ExchSync exchposer, AppSettings appSettings, string name, SyncEvents syncEvents, Action<LogObject> Logger)
         {
+            logger = Logger;
             this.syncEvents = syncEvents;
             this.appSettings = appSettings;
             this.exchposer = exchposer;
@@ -73,11 +76,22 @@ namespace IMAP2ExchSync
             SyncThread.Start();
         }
 
-        protected void Log(int level, object message)
+        protected void Log(int level, string message)
         {
-
-            exchposer.Log(level, message);
-
+            LogObject logObject = new LogObject();
+            logObject.mails = mailObject;
+            if (mailObject != null)
+            {
+                logObject.mailData = mailObject.currentMailWork;
+                if (mailObject.currentMailWork != null)
+                {
+                    logObject.status = mailObject.currentMailWork.status;
+                }
+            }
+            logObject.message = message;
+            logObject.type = level;
+            logger(logObject);
+            logObject = null;
         }
 
         public bool SyncInit(DateTime syncFromTime, DateTime syncToTime, int indexMails, bool offlineSync)
@@ -103,7 +117,7 @@ namespace IMAP2ExchSync
                 //Подключение к серверу Exchange
                 CertificateCallback.AcceptInvalidCertificate = mailObject.ExchangeAcceptInvalidCertificate;
                 exchangeServer = new ExchangeServer(mailObject.ExchangeUserName, mailObject.ExchangePassword,
-                mailObject.ExchangeDomain, mailObject.ExchangeUrl, exchangeReconnectTimeout, exchposer, mailObject.ExchangeMailBox);
+                mailObject.ExchangeDomain, mailObject.ExchangeUrl, exchangeReconnectTimeout, exchposer, Log, mailObject.ExchangeMailBox);
                 try
                 {
                     exchangeServer.Open();
@@ -136,9 +150,9 @@ namespace IMAP2ExchSync
             return true;
         }
 
-        public bool MailSend(string Server,int port, string user, string pass, string sender, string recipient, string fileToSend, string addHeader,string UID, string Size)
+        public string MailSend(string Server,int port, string user, string pass, string sender, string recipient, string fileToSend, string addHeader,string UID, string Size)
         {
-            try
+            try 
             {
                 smtp = new SmtpServer(Server, port, user, pass, Log);
                 smtp.Open();
@@ -148,9 +162,9 @@ namespace IMAP2ExchSync
             catch (Exception ex)
             {
                 Log(1, ex.Message);
-                return false;
+                return ex.Message ;
             }
-            return true;
+            return "";
         }
 
         public static string GetKBMBGB(string Size)
@@ -190,8 +204,9 @@ namespace IMAP2ExchSync
                     lock (((ICollection)queue).SyncRoot)
                     {
                         mailObject = queue.Dequeue();
+                        mailObject.Thread = threadName;
                         Queue<Mails> queue1 = new Queue<Mails>(queue);
-                        Log(1, queue);
+                        //Log(1, queue);
                         queue1.Clear();
                         queue1 = null;
                     }
@@ -203,7 +218,7 @@ namespace IMAP2ExchSync
                     //Инициализация указателей почтовых серверов
                     SyncStop();
                     //Определение пути файла последнего UID
-                    syncId = new FileString(Path.Combine(AppSettings.AppDefaultFolder, mailObject.ExchangeMailBox + "_syncid"));
+                    //syncId = new FileString(Path.Combine(AppSettings.AppDefaultFolder, mailObject.ExchangeMailBox + "_syncid"));
                     Log(1, "Обработка начата");
                     //Инициализация констант даты и времени
                     DateTime currentTime = DateTime.Now;
@@ -220,11 +235,11 @@ namespace IMAP2ExchSync
                          syncFromTime = currentTime;
                      }*/
 
-                    //if ((currentTime.Date - syncFromTime.Date).TotalDays > appSettings.MaxDaysToSync)
+                    //if ((currentTime.Date - syncFromTime.Date).TotalDays > appSettings.DefMaxDaysFullSync)
 
                     //Определение начальной даты синхронизации исходя из максимального количества дней синхронизации
-                    if ((currentTime - syncFromTime).TotalDays > appSettings.MaxDaysToSync)
-                        syncFromTime = currentTime.AddDays(-appSettings.MaxDaysToSync + 1).Date;
+                    if ((currentTime - syncFromTime).TotalDays > appSettings.DefMaxDaysFullSync)
+                        syncFromTime = currentTime.AddDays(-appSettings.DefMaxDaysFullSync + 1).Date;
 
                     //Запуск полной синхронизации ящиков если необходимо
                     if (!SyncInit(syncFromTime, syncToTime, 0, false))
@@ -244,6 +259,12 @@ namespace IMAP2ExchSync
 
                     for (int i = 0; i < mailList.Count; i++)
                     {
+                        mailObject.currentMailWork = mailList[i];
+                        if (syncEvents.ExitThreadEvent.WaitOne(0, false))
+                        {
+                            mailList.Save();
+                            break;
+                        }
                         fileMessageName = AppSettings.AppDefaultFolder + "\\DownLoadedMessages\\" + mailObject.ExchangeMailBox + "[" + mailList[i].UID + "]_" + mailList[i].dateTime.ToString("yyyy_MM_dd.HH.mm.ss") + ".eml";
 
                         //fileMessage.
@@ -263,11 +284,15 @@ namespace IMAP2ExchSync
                                 startOctet = file.Length;
                                 downloaded = startOctet;
                             }
-                            Log(1, "Скачивание: " + mailList[i].UID + " " + GetKBMBGB(mailList[i].Size));
+                            Log(55, "Скачивание: " + mailList[i].UID + " " + GetKBMBGB(mailList[i].Size));
                             DateTime TimerD = DateTime.Now;
                             SetNotifyIcon(Properties.Resources.AppIconBusy, 10, "Начало скачивания: " + mailList[i].subtitle + " " + GetKBMBGB(mailList[i].Size),true);
                             if (mailServer.DownloadMessage(mailList[i].UID, mailObject.MailFolderName, startOctet, (line) =>
                             {
+                                if (syncEvents.ExitThreadEvent.WaitOne(0, false))
+                                {
+                                    return false;
+                                }
                                 //mailMessage.Add(line);
                                 fileMessageB.Write(line, 0, line.Length);
                                 fileMessageB.Flush();
@@ -285,6 +310,7 @@ namespace IMAP2ExchSync
                                     }
                                     TimerD = DateTime.Now;
                                 }
+                                return true;
 
 
                             }))
@@ -293,9 +319,16 @@ namespace IMAP2ExchSync
                                 {
                                     mailList[i].dateTimeDown = DateTime.Now;
                                     mailList[i].status = 1;
+                                    
+                                    Log(44, "");
                                     mailList.Save();
                                     downloaded = 0;
                                     SetNotifyIcon(Properties.Resources.AppIconNormal, 10, "Конец скачивания: " + mailList[i].subtitle + " " + GetKBMBGB(mailList[i].Size), true);
+                                    Log(55, "Скачано");
+                                }
+                                else
+                                {
+                                    Log(55, "Ожидание докачки");
                                 }
                             }
                             else
@@ -310,6 +343,7 @@ namespace IMAP2ExchSync
                                 downloaded = 0;
                                 startOctet = 0;
                                 SetNotifyIcon(Properties.Resources.AppIconNormal, 10, "Ошибка скачивания: " + mailList[i].subtitle + " " + GetKBMBGB(mailList[i].Size), true);
+                                Log(55, "Не удалось скачать");
                                 /*try
                                 {
 
@@ -343,19 +377,23 @@ namespace IMAP2ExchSync
                                     string AddHeader = "Received: from " + mailObject.MailServerName + " (" + mailObject.MailServerName + " [" + Dns.GetHostEntry(mailObject.MailServerName).AddressList[0].ToString() + "])\n" +
                                     "\tby mailserv.maxim-td.ru with " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Name + " id " + System.Reflection.Assembly.GetExecutingAssembly().ImageRuntimeVersion + ";\n" +
                                     "\t" + mailList[i].dateTimeDown.ToUniversalTime().ToString("R");
-                                    Log(1, "Отправка: " + mailList[i].UID + " " + GetKBMBGB((int.Parse(mailList[i].Size) + AddHeader.Length).ToString()));
+                                    Log(55, "Отправка: " + mailList[i].UID + " " + GetKBMBGB((int.Parse(mailList[i].Size) + AddHeader.Length).ToString()));
                                     SetNotifyIcon(Properties.Resources.AppIconBusy, 10, "Начало отправки: " + mailList[i].subtitle + " " + GetKBMBGB((int.Parse(mailList[i].Size) + AddHeader.Length).ToString()), true);
-                                    if (MailSend("mailserv.maxim-td.ru", 465, mailObject.ExchangeDomain + "\\" + mailObject.ExchangeUserName, mailObject.ExchangePassword, "sysadmin3@uk-kvazar.ru", mailObject.ExchangeMailBox, fileMessageName, AddHeader, mailList[i].UID, (int.Parse(mailList[i].Size) + AddHeader.Length).ToString()))
+                                    string hrs = MailSend("127.0.0.1", 25, mailObject.ExchangeDomain + "\\" + mailObject.ExchangeUserName, mailObject.ExchangePassword, "sysadmin3@uk-kvazar.ru", mailObject.ExchangeMailBox, fileMessageName, AddHeader, mailList[i].UID, (int.Parse(mailList[i].Size) + AddHeader.Length + 2).ToString());
+                                    if (hrs == "")
                                     {
                                         SetNotifyIcon(Properties.Resources.AppIconNormal, 10, "Конец отправки: " + mailList[i].subtitle + " " + GetKBMBGB((int.Parse(mailList[i].Size) + AddHeader.Length).ToString()), true);
                                         mailList[i].dateTimeSend = DateTime.Now;
                                         mailList[i].status = 2;
+                                        Log(44, "");
                                         mailList.Save();
+                                        Log(55, "Отправлено");
                                         //File.Delete(fileMessageName);
                                     }
                                     else
                                     {
                                         SetNotifyIcon(Properties.Resources.AppIconNormal, 10, "Не удалось отправить: " + mailList[i].subtitle + " " + GetKBMBGB((int.Parse(mailList[i].Size) + AddHeader.Length).ToString()), true);
+                                        Log(55, "Не удалось отправить " + hrs);
                                     }
                                     mailServer.Close();
                                 }
@@ -461,7 +499,7 @@ namespace IMAP2ExchSync
         delegate void UpdateSettingCallback(Mails mailObject);
         void UpdateSetting(Mails mailObject)
         {
-            appSettings.listMails[mailObject.sort] = mailObject;
+            appSettings.ListMails[mailObject.sort] = mailObject;
             appSettings.Save();
 
         }
@@ -469,9 +507,9 @@ namespace IMAP2ExchSync
         private bool SearchNew()
         {
             string LastUID;
-            LastUID = syncId.Load();
-            
-            if (LastUID != null)
+            //LastUID = syncId.Load();
+            LastUID = (mailList.GetMaxUID()+1).ToString();
+            if ((LastUID != null)&&(LastUID != "1"))
             {
                 mailMessageIDs.Clear();
                 
@@ -494,8 +532,10 @@ namespace IMAP2ExchSync
 
                    // if (findIndex < 0)
                    // {
-                        mailList.Add(new MailData(mailID.UIDMessage, mailID.MessageID, mailID.dateTime, mailID.Subject, mailID.Size));
-                        count++;                        
+                    mailList.Add(new MailData(mailID.UIDMessage, mailID.MessageID, mailID.dateTime, mailID.Subject, mailID.Size, mailObject.MailUserName, mailObject.ExchangeMailBox, mailID.FromName, mailID.FromAddress, mailID.MessageID+mailObject.MailUserName));
+                    mailObject.currentMailWork = mailList[mailList.Count - 1];
+                    Log(66, count.ToString());
+                    count++;                        
 
 
                 }
@@ -510,7 +550,7 @@ namespace IMAP2ExchSync
                             maxUID = int.Parse(mailMessageIDs[i].UIDMessage);
                         }
                     }
-                    syncId.Save((maxUID+1).ToString());
+                    //syncId.Save((maxUID+1).ToString());
                 }
                 if (count != 0)
                 {
@@ -528,12 +568,12 @@ namespace IMAP2ExchSync
                 if (IMAP2ExchSyncApplicationContext.notifyIconMenu.InvokeRequired)
                 {
 
-                    SetSyncCallback d = new SetSyncCallback(SetSync);
-                    IMAP2ExchSyncApplicationContext.notifyIconMenu.Invoke(d, new object[] { mailObject, true });
+                    //SetSyncCallback d = new SetSyncCallback(SetSync);
+                    //IMAP2ExchSyncApplicationContext.notifyIconMenu.Invoke(d, new object[] { mailObject, true });
                 }
                 else
                 {
-                    SetSync(mailObject,true);
+                    //SetSync(mailObject,true);
                 }
                 return false;
             }
@@ -629,11 +669,15 @@ namespace IMAP2ExchSync
                 {
                     MessageIDSearch ss = new MessageIDSearch(mailID.MessageID);
                     int findIndex = exchMessageIDs.FindIndex(ss.Equ);
-                    
+                    //mailList.Add(new MailData(mailID.UIDMessage, mailID.MessageID, mailID.dateTime, mailID.Subject, mailID.Size));
+                    mailList.Add(new MailData(mailID.UIDMessage, mailID.MessageID, mailID.dateTime, mailID.Subject, mailID.Size, mailObject.MailUserName, mailObject.ExchangeMailBox, mailID.FromName, mailID.FromAddress, mailID.MessageID + mailObject.MailUserName));
+                    mailList[mailList.Count - 1].status = 2;
+                    mailObject.currentMailWork = mailList[mailList.Count - 1];
+                    Log(66, count.ToString());
                     if (findIndex<0)
                     {
 
-                        mailList.Add(new MailData(mailID.UIDMessage, mailID.MessageID, mailID.dateTime, mailID.Subject, mailID.Size));
+                        mailList[mailList.Count - 1].status = 0;
                         count++;
                     }
                     
@@ -641,7 +685,7 @@ namespace IMAP2ExchSync
                 Log(1, "Писем для скачивания: " + mailList.Count);
                 //Thread.Sleep(5000);
                 mailList.Save();
-                syncId.Save(mailMessageIDs[mailMessageIDs.Count - 1].UIDMessage);
+                //syncId.Save(mailMessageIDs[mailMessageIDs.Count - 1].UIDMessage);
             }
             catch (Exception ex)
             {

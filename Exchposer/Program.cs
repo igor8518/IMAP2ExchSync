@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Threading;
 
+
 namespace IMAP2ExchSync
 {
     class Program
     {
+        string ProductVersion = "0.2.1704.21";
         private static Mutex mutex;
 
         [STAThread]

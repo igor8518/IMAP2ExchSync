@@ -621,7 +621,7 @@ namespace IMAP2ExchSync
             this.btnOfflineSyncNow.Name = "btnOfflineSyncNow";
             this.btnOfflineSyncNow.Size = new System.Drawing.Size(62, 21);
             this.btnOfflineSyncNow.TabIndex = 3;
-            this.btnOfflineSyncNow.Text = "Sync now";
+            this.btnOfflineSyncNow.Text = "AutoSynch now";
             this.btnOfflineSyncNow.UseVisualStyleBackColor = true;
             this.btnOfflineSyncNow.Click += new System.EventHandler(this.btnOfflineSyncNow_Click);
             // 

@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <?define ProductName="Exchposer" ?>
-  <?define ProductDescription="Exchposer" ?>
-  <?define ProductVersion="0.1.0.0" ?>
-  <?define ProductCode="F1A102AD-9441-4098-9889-EFA6E5A14BC3"?>
+  <?define ProductName="IMAP2ExchSync" ?>
+  <?define ProductDescription="IMAP2ExchSync" ?>
+  <?define ProductVersion="!(bind.FileVersion.ApplicationExe)"?>
+  <!-- <?define ProductVersion="0.2.1704.16" ?> -->
+  <!-- <?define ProductCode="F1A102AD-9441-4098-9889-EFA6E5A14BC3"?> -->
+  <?define ProductCode="*"?>
   <?define UpgradeCode="7E3EDA26-0177-45E4-9003-15857182A414"?>
-  <?define Manufacturer="ddummy"?>
-
-  <Product Id="$(var.ProductCode)" Name="$(var.ProductName)" Language="1033" Version="$(var.ProductVersion)" Manufacturer="$(var.Manufacturer)" UpgradeCode="$(var.UpgradeCode)">
+  <?define Manufacturer="Kvazar studio"?>
+  
+  
+  <Product Id="$(var.ProductCode)" Name="$(var.ProductName)" Language="1049" Version="$(var.ProductVersion)" Manufacturer="$(var.Manufacturer)" UpgradeCode="$(var.UpgradeCode)">
     <Package InstallerVersion="200" Compressed="yes" Description="$(var.ProductDescription)" Manufacturer="$(var.Manufacturer)" InstallScope="perMachine" />
-
+    <!-- <File Id="IMAP2ExchSyncEXE" Name="$(var.IMAP2ExchSync.TargetFileName)" Source="$(var.IMAP2ExchSync.TargetPath)" /> -->
     <Media Id="1" Cabinet="exchposer.cab" EmbedCab="yes" />
 
     <Feature Id="ProductFeature" Title="$(var.ProductDescription)" Level="1">
@@ -20,18 +23,29 @@
 
     <!-- <Property Id="OLDERFOUND" Secure="yes" /> -->
     <!-- <Property Id="ALLUSERS" Value="1" /> -->
-    <Upgrade Id="$(var.UpgradeCode)">
-      <UpgradeVersion Property="OLDERFOUND" OnlyDetect="no" IncludeMaximum="no" Maximum="$(var.ProductVersion)" />
-      <UpgradeVersion Property="NEWERFOUND" OnlyDetect="yes" IncludeMinimum="no" Minimum="$(var.ProductVersion)" />
-    </Upgrade>
     <InstallExecuteSequence>
+      <LaunchConditions After='AppSearch' />
+      <RemoveExistingProducts After='InstallValidate' />
+    </InstallExecuteSequence>
+    <Upgrade Id="$(var.UpgradeCode)">
+      <!-- <UpgradeVersion Property="OLDERFOUND" OnlyDetect="no" IncludeMaximum="no" Maximum="$(var.ProductVersion)" /> -->
+      <!-- <UpgradeVersion Property='OLDVERSIONFOUND' IncludeMinimum='no' Minimum='0.0.0.0' /> -->
+      <UpgradeVersion Minimum="0.0.0"
+                  IncludeMinimum="yes"
+                  OnlyDetect="yes"
+                  Maximum="$(var.ProductVersion)"
+                  IncludeMaximum="no"
+                  Property="PREVIOUSFOUND" />
+     <!-- <UpgradeVersion Property="NEWERFOUND" OnlyDetect="yes" IncludeMinimum="no" Minimum="$(var.ProductVersion)" /> -->
+    </Upgrade>
+    <!-- <InstallExecuteSequence>
       <Custom Action="PreventDowngrading" After="FindRelatedProducts">NEWERFOUND</Custom>
       <RemoveExistingProducts Before='InstallInitialize' />
-    </InstallExecuteSequence>
-    <CustomAction Id="PreventDowngrading" Error="Newer version already installed." />
+    </InstallExecuteSequence> -->
+    <CustomAction Id="PreventDowngrading" Error="Новая версия уже установлена." />
 
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLLOCATION" />
-    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch $(var.ProductName)" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Запустить $(var.ProductName)" />
     <UI>
       <UIRef Id="WixUI_InstallDir" />
 
@@ -69,17 +83,17 @@
 
     <DirectoryRef Id="INSTALLLOCATION">
       <Component Id="ProductComponent" Guid="23EF3DB9-E26D-4CD5-9B8F-EE527A6F4700">
-        <File Id="ApplicationExe" Source="$(var.Exchposer.TargetPath)" />
+        <File Id="ApplicationExe" Source="$(var.IMAP2ExchSync.TargetPath)" />
       </Component>
       <Component Id="EWS_dlls" Guid="446F052A-0994-48A2-9AAC-6E9CCEBD76DC">
-        <File Source="$(var.Exchposer.TargetDir)\Microsoft.Exchange.WebServices.dll" />
-        <File Source="$(var.Exchposer.TargetDir)\Microsoft.Exchange.WebServices.Auth.dll" />
+        <File Source="$(var.IMAP2ExchSync.TargetDir)\Microsoft.Exchange.WebServices.dll" />
+        <File Source="$(var.IMAP2ExchSync.TargetDir)\Microsoft.Exchange.WebServices.Auth.dll" />
       </Component>
     </DirectoryRef>
 
     <DirectoryRef Id="ApplicationProgramsFolder">
       <Component Id="ApplicationShortcut" Guid="F2E6C715-89BE-409F-9B29-F2439BFF04D7">
-        <Shortcut Id="ApplicationStartMenuShortcut" Name="$(var.ProductName)" Description="$(var.ProductDescription)" Target="[INSTALLLOCATION]$(var.Exchposer.TargetFileName)" WorkingDirectory="INSTALLLOCATION" />
+        <Shortcut Id="ApplicationStartMenuShortcut" Name="$(var.ProductName)" Description="$(var.ProductDescription)" Target="[INSTALLLOCATION]$(var.IMAP2ExchSync.TargetFileName)" WorkingDirectory="INSTALLLOCATION" />
         <Shortcut Id="UninstallProduct" Name="Uninstall" Description="Uninstalls the application" Target="[System64Folder]msiexec.exe" Arguments="/x [ProductCode]" />
         <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
         <RegistryValue Root="HKCU" Key="Software\$(var.Manufacturer)\$(var.ProductName)" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
