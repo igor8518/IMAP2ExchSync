@@ -205,6 +205,10 @@ namespace IMAP2ExchSync
                     {
                         mailObject = queue.Dequeue();
                         mailObject.Thread = threadName;
+                        if (mailObject.ExchangeMailBox == "maxozspec1@maxim-td.ru")
+                        {
+                            String s = "Find";
+                        }
                         Queue<Mails> queue1 = new Queue<Mails>(queue);
                         //Log(1, queue);
                         queue1.Clear();
@@ -287,11 +291,11 @@ namespace IMAP2ExchSync
                             Log(55, "Скачивание: " + mailList[i].UID + " " + GetKBMBGB(mailList[i].Size));
                             DateTime TimerD = DateTime.Now;
                             SetNotifyIcon(Properties.Resources.AppIconBusy, 10, "Начало скачивания: " + mailList[i].subtitle + " " + GetKBMBGB(mailList[i].Size),true);
-                            if (mailServer.DownloadMessage(mailList[i].UID, mailObject.MailFolderName, startOctet, (line) =>
+                            string DownloadReturnMessage = mailServer.DownloadMessage(mailList[i].UID, mailObject.MailFolderName, startOctet, (line) =>
                             {
                                 if (syncEvents.ExitThreadEvent.WaitOne(0, false))
                                 {
-                                    return false;
+                                    return "Завершение работы программы";
                                 }
                                 //mailMessage.Add(line);
                                 fileMessageB.Write(line, 0, line.Length);
@@ -310,10 +314,11 @@ namespace IMAP2ExchSync
                                     }
                                     TimerD = DateTime.Now;
                                 }
-                                return true;
+                                return "";
 
 
-                            }))
+                            });
+                            if (DownloadReturnMessage == "")
                             {
                                 if (downloaded >= long.Parse(mailList[i].Size))
                                 {

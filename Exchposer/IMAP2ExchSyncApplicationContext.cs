@@ -1,18 +1,11 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Windows.Forms;
-using Microsoft.Exchange.WebServices.Data;
-using System.Text.RegularExpressions;
-using System.IO;
-using System.Drawing;
-using Microsoft.Win32;
-using System.Threading;
-using System.Collections;
 using System.Data;
+using System.IO;
+using System.Threading;
 using System.Timers;
-using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace IMAP2ExchSync
 {
@@ -20,16 +13,13 @@ namespace IMAP2ExchSync
     {
         RegistryKey rkApp = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
         public BindingSource mailBindingSource { get; set; }
-        
+
         private const int maxLogFileSize = 1024 * 1024 * 10;//Максимальный размер лога
         private const int maxLogFileCount = 15;//Максимальное количество файлов лога       
 #if DEBUG
         private const int maxThread = 1;
 #endif
         private const int exchangeReconnectTimeout = 10;
-        //public Action<int, object, Mails, string> Logger;
-        //private void NewLog(int level, bool Error = false, Mails mails = null)
-        //public void Log(int level, object message, Mails m = null, string origMessage = "")
         private Action<LogObject> DefaultLogger = null;
         private System.Timers.Timer timer = null;
         public DataTable FullListMail = null;
@@ -41,15 +31,11 @@ namespace IMAP2ExchSync
                 return exchangeReconnectTimeout;
             }
         }
+        //Класс настроек программы и список ящиков для обработки
+        static AppSettings appSettings = null;
 
-        static AppSettings appSettings = null; //Класс настроек программы и список ящиков для обработки
-
-        LogWriter logWriter = null; //Ссылка на логгер
-        //MailServer mailServer = null;
-        //ExchangeServer exchangeServer = null;
-
-        //Icon AppIconNormal = new Icon("AppIconNormal.ico");
-        //Icon AppIconBusy = new Icon("AppIconBusy.ico");
+        //Ссылка на логгер
+        LogWriter logWriter = null;
 
         public bool Initialized { get { return notifyIcon != null; } }
 
@@ -57,8 +43,11 @@ namespace IMAP2ExchSync
         public static ContextMenuStrip notifyIconMenu = null;
         public static OptionsForm optionsForm = null;
         public static MailsForm mailForm = null;
+
         LogViewForm logViewForm = null;
-        Queue<Mails> mainQueue = null; //Основная очередь обработки
+
+        //Основная очередь обработки
+        Queue<Mails> mainQueue = null;
 
         public bool AutoRun
         {
@@ -81,38 +70,41 @@ namespace IMAP2ExchSync
 
 
         delegate void SetLogCallback(string message = "", int type = 10, Mails mails = null, MailData md = null, int status = 0);
+
         private void CreateAppDefaultFolder(string folderName)
         {
             if (System.IO.Path.GetFullPath(folderName).Equals(System.IO.Path.GetFullPath(AppSettings.AppDefaultFolder)))
                 Directory.CreateDirectory(folderName);
         }
 
+        //Бинд к таблице лога в основной форме
+        public static DataTable LogTableForm = new DataTable();
 
-        public static DataTable LogTableForm = new DataTable(); //Бинд к таблице лога в основной форме
-        
+
+        /// <summary>
+        /// Очередь сообщений для лога
+        /// </summary>
         private Queue<LogObject> QueueLogs = null;
 
+        /// <summary>
+        /// Добавляет объект лога в конец очереди
+        /// </summary>
+        /// <param name="logobject"></param>
         private void NewLog(LogObject logobject)
         {
-            //lock (((ICollection)QueueLogs).SyncRoot)
+            //Добавление объектов логов как только очередь будет меньше 100ы
             while (QueueLogs.Count > 100)
             {
 
             }
             lock (QueueLogs)
             {
-                //Thread.Sleep(1000);
-                if (logobject.message == null)
-                {
-                    //MessageBox.Show("Error!!!");
-                }
                 QueueLogs.Enqueue(logobject);
             }
         }
 
         private void DequeueLog(Object source, ElapsedEventArgs e)
         {
-            //lock (((ICollection)QueueLogs).SyncRoot)
             if (QueueLogs.Count > 0)
             {
                 lock (QueueLogs)
@@ -138,7 +130,6 @@ namespace IMAP2ExchSync
 
                 }
             }
-            //throw new NotImplementedException();
         }
 
 
@@ -167,7 +158,6 @@ namespace IMAP2ExchSync
             {
                 managedThreadId = "Неизв. поток";
             }
-            // int managedThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
             string firstMessage = message;
             SynchincSearch ss = new SynchincSearch(managedThreadId);
             int findIndex = threads.FindIndex(ss.Equ);
@@ -186,102 +176,79 @@ namespace IMAP2ExchSync
                 }
             }
 
+            message = "[" + managedThreadId + "]" + mailbox + message;
 
+            if (type == 66)
+            {
+                FullListMail.Rows.Add(new object[] { md.dateTimeSend, md.ToName, md.ToAddress, md.FromName, md.FromAddress, md.subtitle, md.status, md.progress, md.GUID });
 
+            }
+            if (type == 55)
+            {
 
-                message = "[" + managedThreadId + "]" + mailbox + message;
-                if (notifyIconMenu.InvokeRequired)
+                var FindRow = FullListMail.Select("GUID='" + md.GUID + "'");
+                if (FindRow.Length > 0)
                 {
-                    
-                    /*SetLogCallback d = new SetLogCallback(Log);
-                    notifyIconMenu.Invoke(d, new object[] { type, message, mails, firstMessage });
-                    return;*/
+                    FindRow[0]["Progress"] = origMessage;
                 }
-                if (type == 66)
+            }
+            if (type == 44)
+            {
+
+                var FindRow = FullListMail.Select("GUID='" + md.GUID + "'");
+                if (FindRow.Length > 0)
                 {
-                    FullListMail.Rows.Add(new object[] { md.dateTimeSend, md.ToName, md.ToAddress, md.FromName, md.FromAddress, md.subtitle, md.status, md.progress,md.GUID });                    
-                    if (mailForm != null)
+                    FindRow[0]["Status"] = status;
+                    FindRow[0]["Time Sended"] = md.dateTimeSend;
+                }
+            }
+            if (logWriter != null)
+            {
+                string logText = logWriter.Log(type, message);
+                if (logText != "")
+                {
+                    if (type != 55)
                     {
-                        //mailForm.Refresh();
+                        LogTableForm.Rows.Add(logText + Environment.NewLine);
+                    }
+                    if (m != null)
+                        m.LastStatus = origMessage.ToString();
+                }
+                else
+                {
+                    if (type != 55)
+                    {
+                        LogTableForm.Rows.Add(message);
+                    }
+                    if (m != null)
+                        m.LastStatus = origMessage.ToString();
+                }
+
+                if ((logViewForm != null) && (logText != ""))
+                {
+                    if (type != 55)
+                    {
+                        logViewForm.AppendLog(logText + Environment.NewLine);
                     }
                 }
-                if (type == 55)
+                if ((optionsForm != null) && (logText != ""))
                 {
-                    /* object key = ((FullListMail.DefaultView)[4]);
-                     int FindIndex = FullListMail.DefaultView.Find(key);
-                     if (FindIndex >= 0)
-                     {
-                         FullListMail.Rows[FindIndex][4] = origMessage;
-                     }*/
-                    var FindRow = FullListMail.Select("GUID='" + md.GUID+"'");
-                    if (FindRow.Length>0)
+                    if (type != 55)
                     {
-                        FindRow[0]["Progress"] = origMessage;
-                    }
-                }
-                if (type == 44)
-                {
-                    /*int FindIndex = FullListMail.DefaultView.Find(m.currentMailWork.GUID);
-                    if (FindIndex >= 0)
-                    {
-                        FullListMail.Rows[FindIndex][3] = m.currentMailWork.status;
-                    }*/
-                    var FindRow = FullListMail.Select("GUID='" + md.GUID + "'");
-                    if (FindRow.Length > 0)
-                    {
-                        FindRow[0]["Status"] = status;
-                        FindRow[0]["Time Sended"] = md.dateTimeSend;
-                    }
-                }
-                if (logWriter != null)
-                {
-                    string logText = logWriter.Log(type, message);
-                    if (logText != "")
-                    {
-                        if (type != 55)
-                        {
-                            LogTableForm.Rows.Add(logText + Environment.NewLine);
-                        }
-                        if (m != null)
-                            m.LastStatus = origMessage.ToString();
-                    }
-                    else
-                    {
-                        if (type != 55)
-                        {
-                            LogTableForm.Rows.Add(message);
-                        }
-                        if (m != null)
-                            m.LastStatus = origMessage.ToString();
+                        optionsForm.AppendLog(logText + Environment.NewLine);
                     }
 
-                    if ((logViewForm != null) && (logText != ""))
-                    {
-                        if (type != 55)
-                        {
-                            logViewForm.AppendLog(logText + Environment.NewLine);
-                        }
-                    }
-                    if ((optionsForm != null) && (logText != ""))
-                    {
-                        if (type != 55)
-                        {
-                            optionsForm.AppendLog(logText + Environment.NewLine);
-                        }
-                        
-
-                    }
 
                 }
-            
+
+            }
+
         }
 
         public bool AppInit()
         {
             AppStop();
             FullListMail = new DataTable();
-            //DataTable dt = new DataTable("Mails");
-            //FullListMail.Table = dt;
             FullListMail.Columns.Add("Time Sended", typeof(DateTime));
             FullListMail.Columns.Add("ToName", typeof(string));
             FullListMail.Columns.Add("ToAddress", typeof(string));
@@ -292,7 +259,7 @@ namespace IMAP2ExchSync
             FullListMail.Columns.Add("Progress", typeof(string));
             FullListMail.Columns.Add("GUID", typeof(string));
             mainQueue = new Queue<Mails>(appSettings.ListMails);
-            for (int i=0;i<mainQueue.Count;i++)
+            for (int i = 0; i < mainQueue.Count; i++)
             {
                 MailList<MailData> currentMails = MailList<MailData>.Load(appSettings.ListMails[i]);
                 if (currentMails != null)
@@ -351,15 +318,14 @@ namespace IMAP2ExchSync
             {
 
                 threads.Clear();
-#if DEBUG
-                    threads.Add(new Synchinc(mainQueue, this, appSettings, "Поток 1", syncEvents, DefaultLogger));
-
-#else
-                    for (int i = 0; i < appSettings.maxThreads; i++)
-                    {
-                        threads.Add(new Synchinc(mainQueue, this, appSettings, "Поток "+i.ToString(), syncEvents, DefaultLogger));
-                    }
-#endif
+                #if DEBUG
+                threads.Add(new Synchinc(mainQueue, this, appSettings, "Поток 1", syncEvents, DefaultLogger));
+                #else
+                for (int i = 0; i < appSettings.maxThreads; i++)
+                {
+                    threads.Add(new Synchinc(mainQueue, this, appSettings, "Поток "+i.ToString(), syncEvents, DefaultLogger));
+                }
+                #endif
 
 
             }
@@ -371,7 +337,7 @@ namespace IMAP2ExchSync
         public void AppStop()
         {
             syncEvents.ExitThreadEvent.Set();
-            
+
             foreach (Synchinc syncThread in threads)
             {
                 while (!syncThread.SyncThread.Join(10))
@@ -379,7 +345,7 @@ namespace IMAP2ExchSync
                     Application.DoEvents();
                 }
             }
-            while (QueueLogs.Count!=0)
+            while (QueueLogs.Count != 0)
             {
                 Application.DoEvents();
             }
@@ -406,23 +372,27 @@ namespace IMAP2ExchSync
             if (logWriter != null)
                 logWriter.Clear();
         }
-        //
-        // Сводка:
-        //     Конструктор главного класса в главном потоке
-        //
-        // Параметры:
-        //   appSettingsFileName:
-        //     Имя файла конфигурации
+        /// <summary>
+        /// Конструктор главного класса в главном потоке
+        /// </summary>
+        /// <param name="appSettingsFileName">Имя файла конфигурации</param>
         public IMAP2ExchSyncApplicationContext(string appSettingsFileName)
         {
             LogTableForm.Columns.Add("LOG", typeof(string));
-            
+
+            //Определение логгера по умолчанию
             DefaultLogger = NewLog;
+
+            //Создание очереди объектов лога
             QueueLogs = new Queue<LogObject>();
+
+            //Определение таймера на 20мс для выемки объектов лога из очереди
             timer = new System.Timers.Timer(20);
             timer.Elapsed += DequeueLog;
-            //timer.AutoReset = true;
             timer.Enabled = true;
+            /////////////////////////////////
+
+            //Чтение конфига
             string configFileName = "";
             try
             {
@@ -444,6 +414,7 @@ namespace IMAP2ExchSync
                 MessageBox.Show(String.Format("Ошибка записи/чтения настроек из файла" + " {0}: {1}", configFileName, ex.Message));
                 return;
             }
+            /////////////////
             //Присвоение порядка сортировки. Пока не знаю зачем, но пригодится.
             int MailsIndex = 0;
             foreach (Mails mails in appSettings.ListMails)
@@ -452,23 +423,25 @@ namespace IMAP2ExchSync
                 MailsIndex++;
             }
             ///////////////////////////////////
-            
 
 
+            // Создание контекстного меню в трее
             notifyIconMenu = new ContextMenuStrip();
-
             notifyIconMenu.Items.Add("&Мониторинг").Click += new EventHandler(MonitoringMenuItem_Click);
             notifyIconMenu.Items.Add("&Настройки...").Click += new EventHandler(OptionsMenuItem_Click);
             notifyIconMenu.Items.Add("&Лог...").Click += new EventHandler(LogMenuItem_Click);
             notifyIconMenu.Items.Add("В&ыход").Click += new EventHandler(ExitMenuItem_Click);
             notifyIconMenu.Items[notifyIconMenu.Items.Count - 1].Name = "Exit";
+            ////////////////////////////////////
 
+            // Создание значка в трее
             notifyIcon = new NotifyIcon();
             notifyIcon.Text = AppSettings.AppName;
             notifyIcon.Icon = Properties.Resources.AppIconNormal;
             notifyIcon.ContextMenuStrip = notifyIconMenu;
             notifyIcon.DoubleClick += new EventHandler(NotifyIcon_DoubleClick);
             notifyIcon.Visible = true;
+            ////////////////////////
 
             CertificateCallback.Initialize();
 
@@ -566,7 +539,6 @@ namespace IMAP2ExchSync
         {
 
             AppStop();
-            //Thread.Sleep(10000);
             if (logViewForm != null)
             {
                 logViewForm.Dispose();
@@ -585,27 +557,11 @@ namespace IMAP2ExchSync
                 notifyIcon = null;
             }
 
-            //SyncStop();
-            
+
 
             base.ExitThreadCore();
-        
-    }
 
-        /*
-        private static void ExitMenuItem_Click(object sender, EventArgs e)
-        {
-            Application.Exit();
         }
 
-        public void OnApplicationExit(object sender, EventArgs e)
-        {
-            if (notifyIcon != null)
-            {
-                notifyIcon.Dispose();
-                notifyIcon = null;
-            }
-        }
-        */
     }
 }

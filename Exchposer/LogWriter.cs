@@ -17,6 +17,11 @@ namespace IMAP2ExchSync
 
         private StreamWriter fileWriter = null;
 
+        public string LogFileName { get { return logFileName; } set { logFileName = value; Close(); } }
+        public int Level { get { return level; } set { level = value; } }
+
+        
+        //Конструктор
         public LogWriter(bool autoOpen, int level, string logFileName, int maxLogFileSize = 0, int maxLogFileCount = 0)
         {
             this.level = level;            
@@ -27,7 +32,7 @@ namespace IMAP2ExchSync
             if (autoOpen)
                 Open();
         }
-
+        //Открытие файла лога
         private void Open()
         {
             Close();
@@ -37,7 +42,7 @@ namespace IMAP2ExchSync
             fileWriter = new StreamWriter(new FileStream(logFileName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite));
             fileWriter.AutoFlush = true;
         }
-
+        //Закрытие файла лога
         public void Close()
         {
             if (fileWriter != null)
@@ -47,7 +52,7 @@ namespace IMAP2ExchSync
                 fileWriter = null;
             }
         }
-
+        //Оборот файла лога
         private void Rotate()
         {
             if (!File.Exists(logFileName))
@@ -76,9 +81,8 @@ namespace IMAP2ExchSync
                 File.Delete(logFileName);
         }
 
-        public string LogFileName { get { return logFileName; } set { logFileName = value; Close(); } }
-        public int Level { get { return level; } set { level = value; } }
-
+        
+        //Запись строки лога
         public string Log(int level, string message)
         {
             lock (this)
@@ -101,6 +105,7 @@ namespace IMAP2ExchSync
             }
         }
 
+        //Отчистка файла лога
         public void Clear()
         {
             if (fileWriter != null)
@@ -113,8 +118,7 @@ namespace IMAP2ExchSync
             }
         }
         
-        //public delegate void SetStringCallback(string message);
-        //public void Load(SetStringCallback loadAction)
+        //Загрузка файла лога
         public void Load(Action<string> loadAction)
         {
             if (loadAction == null)

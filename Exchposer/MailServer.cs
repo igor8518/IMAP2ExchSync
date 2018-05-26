@@ -187,9 +187,9 @@ namespace IMAP2ExchSync
         {
             return false;
         }
-        virtual public bool DownloadMessage(string UID, string mailBox, long StartOctet, Func<byte[], bool> messageAction)
+        virtual public string DownloadMessage(string UID, string mailBox, long StartOctet, Func<byte[], string> messageAction)
         {
-            return false;
+            return "";
         }
 
 
@@ -284,7 +284,15 @@ namespace IMAP2ExchSync
         private static string HeadersEncode(Match m)
         {
             string result = String.Empty;
-            Encoding cp = Encoding.GetEncoding(m.Groups["cp"].Value);
+            Encoding cp = null;
+            try
+            {
+                cp = Encoding.GetEncoding(m.Groups["cp"].Value);
+            }
+            catch
+            {
+                cp = Encoding.Default;
+            }
             Encoding dcp = Encoding.Default;
             if (m.Groups["ct"].Value.ToUpper() == "Q")
             { // кодируем из Quoted-Printable
@@ -873,7 +881,7 @@ namespace IMAP2ExchSync
 
         }
 
-        override public bool DownloadMessage(string UID, string mailBox, long StartOctet, Func<byte[], bool> messageAction)
+        override public string DownloadMessage(string UID, string mailBox, long StartOctet, Func<byte[], string> messageAction)
         {
             try
             {
@@ -939,10 +947,10 @@ namespace IMAP2ExchSync
                                 fetchBytes = readerB.ReadBytes(1024);
                                 //fetchResult = fetchBytes.ToString();
                                 downloaded += fetchBytes.Length;
-
-                                if (!messageAction(fetchBytes))
+                                string ReturnMessageAction = messageAction(fetchBytes);
+                                if (ReturnMessageAction != "")
                                 {
-                                    return false;
+                                    return ReturnMessageAction;
                                 }
                             }
                             else
@@ -993,7 +1001,7 @@ namespace IMAP2ExchSync
 
                       }*/
                     
-                    return false;
+                    return "IMAP Сервер не вернул сообщения для скачки: "+ fetchResult;
 
                 }
                 //fetchResult = reader.ReadLine();
@@ -1005,10 +1013,10 @@ namespace IMAP2ExchSync
             catch (Exception ex)
             {
                 Log(1, String.Format("IMAP server download error: {0}", ex.Message));
-                return false;
+                return String.Format("IMAP server download error: {0}", ex.Message);
             }
 
-            return true;
+            return "";
         }
 
         override public void Close()

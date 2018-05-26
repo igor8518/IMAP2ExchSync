@@ -8,24 +8,13 @@ namespace IMAP2ExchSync
 {
     class Program
     {
-        string ProductVersion = "0.2.1704.21";
+        string ProductVersion = "0.2.1704.22";
         private static Mutex mutex;
 
         [STAThread]
         static void Main(string[] args)
         {
-            string appSettingsFileName = (args.Length > 1 ? args[0] : null);
-
-            /*
-            string processName = Process.GetCurrentProcess().ProcessName;
-            Process[] instances = Process.GetProcessesByName(processName);
-
-            if (instances.Length > 1)
-            {
-                MessageBox.Show("Application \"" + processName + "\" is already running", "Error");
-                return;
-            }
-            */
+            string appSettingsFileName = (args.Length > 1 ? args[0] : null);          
 
             bool running;
             mutex = new Mutex(false, "Local\\IMAP2ExchSync{216EE2D8-ADC7-4B5B-818A-5AB2B4E68EF1}", out running);
@@ -36,9 +25,7 @@ namespace IMAP2ExchSync
             }
 
             Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);            
-            //ExchposerApplicationContext exchposerApplicationContext = new ExchposerApplicationContext();
-            //Application.ApplicationExit += new EventHandler(exchposerApplicationContext.OnApplicationExit);
+            Application.SetCompatibleTextRenderingDefault(false);
 
             try
             {
@@ -48,7 +35,7 @@ namespace IMAP2ExchSync
             }
             catch (Exception ex)
             {
-                MessageBox.Show(String.Format("Критическая ошибка приложения"+" {0}", ex.Message));
+                MessageBox.Show(String.Format("Критическая ошибка приложения" + " {0}", ex.Message));
                 return;
             }
         }
