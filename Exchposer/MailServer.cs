@@ -126,7 +126,7 @@ namespace IMAP2ExchSync
             }
         }
 
-        protected const int connectTimeout = 5000;
+        protected const int connectTimeout = 600000;
         protected const int readTimeout = 100000;
         protected const int writeTimeout = 100000;
 
@@ -433,12 +433,13 @@ namespace IMAP2ExchSync
                 base.Open();
 
                 sslStream = new SslStream(stream);
-                stream.ReadTimeout = 10000;
-                stream.WriteTimeout = 10000;
+                stream.ReadTimeout = 100000;
+                stream.WriteTimeout = 100000;
                 Log(1, "Start SSL Auth");
                 sslStream.AuthenticateAsClient(server);
                 Log(1, "End SSL Auth");
-
+                sslStream.ReadTimeout = 10000;
+                sslStream.WriteTimeout = 10000;
                 reader = new StreamReaderWithLog(sslStream, Log);
                 //reader.
                 writer = new StreamWriterWithLog(sslStream, Log) { AutoFlush = true };
