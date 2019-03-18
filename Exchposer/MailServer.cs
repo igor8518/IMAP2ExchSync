@@ -133,7 +133,7 @@ namespace IMAP2ExchSync
         protected string server = null;
         protected int port = 0;
         protected TcpClient client = null;
-        protected NetworkStream stream = null;
+        protected NetworkStream TCPStream = null;
         protected StreamReaderWithLog reader = null;
         protected StreamWriterWithLog writer = null;
         protected BinaryReaderS readerB = null;
@@ -156,19 +156,22 @@ namespace IMAP2ExchSync
         {
             try
             {
+                //Закрытие соединения, если открыто.
+                //Есть подозрение, что из-за этого закрытия стопорится почта.
                 Close();
 
+                //Создание TCP, настройка и запуск соединения
                 client = new TcpClient();
                 TcpClientTimeoutConnect(client, server, port, connectTimeout);
-                stream = client.GetStream();
+                TCPStream = client.GetStream();
 
                 Log(22, String.Format("Mail server connection opened"));
             }
             catch
             {
-                if (stream != null)
-                    stream.Dispose();
-                stream = null;
+                if (TCPStream != null)
+                    TCPStream.Dispose();
+                TCPStream = null;
 
                 if (client != null)
                     client.Close();
@@ -176,7 +179,6 @@ namespace IMAP2ExchSync
 
                 throw;
             }
-            //return "";
         }
 
         virtual public bool GetMessageIDs(DateTime fromTime, DateTime toTime, string mailBox, Action<MailMessageIDs> messageAction)
@@ -196,9 +198,9 @@ namespace IMAP2ExchSync
 
         virtual public void Close()
         {
-            if (stream != null)
-                stream.Dispose();
-            stream = null;
+            if (TCPStream != null)
+                TCPStream.Dispose();
+            TCPStream = null;
 
             if (client != null)
             {
@@ -432,16 +434,16 @@ namespace IMAP2ExchSync
 
                 base.Open();
 
-                sslStream = new SslStream(stream);
-                stream.ReadTimeout = 100000;
-                stream.WriteTimeout = 100000;
+                sslStream = new SslStream(TCPStream);
+                TCPStream.ReadTimeout = 100000;
+                TCPStream.WriteTimeout = 100000;
                 Log(1, "Start SSL Auth");
                 sslStream.AuthenticateAsClient(server);
                 Log(1, "End SSL Auth");
                 sslStream.ReadTimeout = 10000;
                 sslStream.WriteTimeout = 10000;
                 reader = new StreamReaderWithLog(sslStream, Log);
-                //reader.
+
                 writer = new StreamWriterWithLog(sslStream, Log) { AutoFlush = true };
 
                 readerB = new BinaryReaderS(sslStream);
@@ -465,7 +467,13 @@ namespace IMAP2ExchSync
                 writer.WriteLine(". LOGIN " + userName + " " + password);
                 Log(23, ". LOGIN " + userName + " " + "*****");
                 do
+                {
                     serverResponse = reader.ReadLine();
+                    if (serverResponse.StartsWith("* BYE"))
+                    {
+                        throw new InvalidOperationException("IMAP server respond to LOGIN request: " + serverResponse);
+                    }
+                }
                 while (serverResponse.StartsWith("*"));
                 if (!serverResponse.StartsWith(". OK"))
                 {
@@ -711,7 +719,7 @@ namespace IMAP2ExchSync
                 sslStream = null;
 
                 base.Close();
-
+                //!!!Надо разобраться почему тут исключение возникает.
                 throw;
             }
             return true;
@@ -899,7 +907,7 @@ namespace IMAP2ExchSync
                     throw new InvalidOperationException("IMAP server respond to SELECT request: " + searchResult);
                 }
                 //sendMess = "FCH UID FETCH " + UID + " RFC822 <5";
-                sendMess = "FCH UID FETCH " + UID + " BODY[]<"+StartOctet.ToString()+ ".2097152>"; //Лимит 2 МБ
+                sendMess = "FCH UID FETCH " + UID + " BODY[]<"+StartOctet.ToString()+ ".15728640>"; //Лимит 2 МБ
                 writer.WriteLine(sendMess);
                 string fetchResult;
                 //fetchResult = reader.ReadLine();
@@ -1131,8 +1139,8 @@ namespace IMAP2ExchSync
 
                 base.Open();
 
-                clearTextReader = new StreamReader(stream);
-                clearTextWriter = new StreamWriter(stream) { AutoFlush = true };
+                clearTextReader = new StreamReader(TCPStream);
+                clearTextWriter = new StreamWriter(TCPStream) { AutoFlush = true };
 
                 clearTextReader.BaseStream.ReadTimeout = readTimeout;
                 clearTextWriter.BaseStream.WriteTimeout = writeTimeout;
@@ -1166,11 +1174,11 @@ namespace IMAP2ExchSync
                 //readerB = new BinaryReaderS(sslStream);
                 //writerB = new BinaryWriter(sslStream);
                 ////////////////////////////////
-                reader = new StreamReaderWithLog(stream);
-                writer = new StreamWriterWithLog(stream) { AutoFlush = true };
+                reader = new StreamReaderWithLog(TCPStream);
+                writer = new StreamWriterWithLog(TCPStream) { AutoFlush = true };
 
-                readerB = new BinaryReaderS(stream);
-                writerB = new BinaryWriter(stream);
+                readerB = new BinaryReaderS(TCPStream);
+                writerB = new BinaryWriter(TCPStream);
                 ////////////////////////////////
 
                 reader.BaseStream.ReadTimeout = readTimeout;
@@ -1420,7 +1428,7 @@ namespace IMAP2ExchSync
                }
                catch (Exception ex)
                {
-                   Log(1, String.Format("SMTP server open error: {0}", ex.Message));
+                   Log(1, String.Format("SMTP server open error: {0}", ex.MessageEndThread));
 
                    if (writer != null)
                        writer.Dispose();
@@ -1455,7 +1463,7 @@ namespace IMAP2ExchSync
                }
                catch (Exception ex)
                {
-                   Log(1, String.Format("SMTP server close error: {0}", ex.Message));
+                   Log(1, String.Format("SMTP server close error: {0}", ex.MessageEndThread));
                }
                finally
                {
@@ -1507,7 +1515,7 @@ namespace IMAP2ExchSync
                }
                catch (Exception ex)
                {
-                   Log(1, String.Format("SMTP send error: {0}", ex.Message));
+                   Log(1, String.Format("SMTP send error: {0}", ex.MessageEndThread));
                }
            }
        }*/

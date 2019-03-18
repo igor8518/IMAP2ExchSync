@@ -8,7 +8,7 @@ namespace IMAP2ExchSync
 {
     class Program
     {
-        string ProductVersion = "0.2.1704.22";
+        string ProductVersion = "0.2.1811.1";
         private static Mutex mutex;
 
         [STAThread]
