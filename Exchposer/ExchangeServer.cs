@@ -212,7 +212,7 @@ namespace IMAP2ExchSync
             }
             catch (Exception ex)
             {
-                Log(1, String.Format("Exchange subscription connection creating error: {0}", ex.Message));
+                Log(1, String.Format("Exchange subscription connection creating error: {0}", ex.MessageEndThread));
                 if (subscriptionConnection != null)
                     subscriptionConnection.Dispose();
                 subscriptionConnection = null;
@@ -227,7 +227,7 @@ namespace IMAP2ExchSync
             }
             catch (Exception ex)
             {
-                Log(1, String.Format("Exchange subscription creating error: {0}", ex.Message));
+                Log(1, String.Format("Exchange subscription creating error: {0}", ex.MessageEndThread));
                 RestartStreamingNotifications();
                 return;
             }
@@ -317,7 +317,7 @@ namespace IMAP2ExchSync
             if (streamingSubscription == null)
                 return;
 
-            Log(20, String.Format("Exchange subscription error: {0} Restartting subscribtion...", args.Exception.Message));
+            Log(20, String.Format("Exchange subscription error: {0} Restartting subscribtion...", args.Exception.MessageEndThread));
             RestartStreamingNotifications();
 /*
             try
@@ -329,7 +329,7 @@ namespace IMAP2ExchSync
             }
             catch (Exception ex)
             {
-                Log(1, String.Format("Exchange subscription creating error: {0}", ex.Message));
+                Log(1, String.Format("Exchange subscription creating error: {0}", ex.MessageEndThread));
                 return;
             }
 
@@ -351,7 +351,7 @@ namespace IMAP2ExchSync
             }
             catch (Exception ex)
             {
-                Log(1, String.Format("Exchange subscription connection open error: {0}", ex.Message));                
+                Log(1, String.Format("Exchange subscription connection open error: {0}", ex.MessageEndThread));                
                 RestartStreamingNotifications();
                 return;
             }

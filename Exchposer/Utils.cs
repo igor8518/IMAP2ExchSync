@@ -117,8 +117,9 @@ namespace IMAP2ExchSync
             }
             catch (Exception ex)
             {
-                
+                File.Delete(fileName);
                 throw;
+                
             }
         }
 

@@ -24,7 +24,7 @@ namespace IMAP2ExchSync
         public bool DefLogClearOnStartup = true;
         public bool AutoSynch = false;
         public bool DefSyncEnabled = false;
-        public int maxThreads = 3;
+        public int maxThreads = 6;
 
         public void Copy(AppSettings appSettings)
         {
